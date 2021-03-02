@@ -38,6 +38,54 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
+        public async Task CreateLobby(Player player, string lobbyName, string password = "")
+        {
+            if(_lobbies.Any(x => x.Value.Players.Any(y => y.Value.PlayerID == player.PlayerID)))
+            {
+                await this.Clients.Caller.SendAsync("CreateLobbyException", new CreateLobbyExceptionEventArgs
+                {
+                    Player = player,
+                    Reason = "Player already in a lobby"
+                });
+            }
+            else
+            {
+                var lobby = new Lobby
+                {
+                    GameMode = "default",
+                    LobbyCreator = player,
+                    Password = password,
+                    SessionID = 0
+                };
+                await this.Clients.All.SendAsync("LobbyAdded", new LobbyAddedEventArgs
+                {
+                    Creator = player,
+                    Lobby = lobby
+                });
+                await this.Clients.Caller.SendAsync("LobbyCreated", new LobbyCreatedEventArgs
+                {
+                    Lobby = lobby,
+                    Password = password
+                });
+            }
+        }
+
+        /// <summary>
+        /// Raised by client when general lobby settings are changed (name, password, host/creator etc.)
+        /// </summary>
+        public async Task ChangeLobbySettings(Lobby lobby, string creatorConnectionID)
+        {
+            if (_lobbies[lobby.SessionID].LobbyCreator.ConnectionID != creatorConnectionID)
+                return;
+            var old = _lobbies[lobby.SessionID];
+            _lobbies[lobby.SessionID] = lobby;
+            await this.Clients.All.SendAsync("LobbyGeneralSettingsChanged", new LobbyGeneralSettingsChangedEventArgs
+            {
+                After = _lobbies[lobby.SessionID],
+                Before = old
+            });
+        }
+
         /// <summary>
         /// Raised by client when trying to join a a lobby
         /// </summary>
