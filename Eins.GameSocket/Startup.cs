@@ -3,14 +3,9 @@ using Eins.TransportEntities;
 using Eins.TransportEntities.GameSession;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,26 +16,17 @@ namespace Eins.GameSocket
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-
-        public IConfiguration Configuration { get; }
-
         // This method gets called by the runtime. Use this method to add services to the container.
+        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Eins.GameSocket", Version = "v1" });
-            });
             services.AddSignalR();
+            //Player connection IDs 
+            services.AddSingleton(new ConcurrentDictionary<string, Player>());
+            //List of lobbies
             services.AddSingleton(new ConcurrentBag<Lobby>());
+            //List of games
             services.AddSingleton(new ConcurrentBag<Game>());
-            services.AddSingleton(new ConcurrentDictionary<ulong, IClientProxy>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -49,21 +35,13 @@ namespace Eins.GameSocket
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Eins.GameSocket v1"));
             }
-
-            app.UseHttpsRedirection();
 
             app.UseRouting();
 
-            app.UseAuthorization();
-
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
-                endpoints.MapHub<GameHub>("/games");
-                endpoints.MapHub<LobbyHub>("/lobbies");
+                endpoints.MapHub<GameLobbyHub>("/gamelobby");
             });
         }
     }

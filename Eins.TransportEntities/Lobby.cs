@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace Eins.TransportEntities
@@ -7,13 +8,15 @@ namespace Eins.TransportEntities
     {
         public ulong SessionID { get; set; }
         public string Password { get; set; } = "";
+        public Player LobbyCreator { get; set; }
+
         public DateTimeOffset CreationDate { get; set; } = DateTimeOffset.UtcNow;
 
         //TODO: Replace with CustomGameSettings object
         public string GameMode { get; set; }
         public bool GameInProgress { get; set; } = false;
 
-        public List<Player> Players { get; set; } = new List<Player>();
+        public ConcurrentDictionary<string, Player> Players { get; set; } = new ConcurrentDictionary<string, Player>();
 
     }
 }

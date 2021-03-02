@@ -14,7 +14,7 @@ namespace Eins.GameSocket.Test
             await Task.Delay(5000); //Wait for shit to start up just in case
 
             var hub = new HubConnectionBuilder()
-                .WithUrl("https://localhost:49153/lobby")
+                .WithUrl("https://localhost:49153/gamelobby")
                 .Build();
 
             await hub.StartAsync();
@@ -25,15 +25,11 @@ namespace Eins.GameSocket.Test
                 await Task.Delay(10);
             });
             ulong i = 0;
-            while (true)
-            {
-                await hub.InvokeAsync("SendMessage", new Player
-                {
-                    PlayerID = i++,
-                    Username = "Jeff"
-                }); ;
-                //await Task.Delay(500);
-            }
+            //while (true)
+            //{
+                await hub.InvokeAsync("RequestLobbies"); 
+            //    await Task.Delay(500);
+            //}
         }
     }
 }
