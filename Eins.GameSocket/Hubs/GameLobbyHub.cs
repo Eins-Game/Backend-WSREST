@@ -169,6 +169,34 @@ namespace Eins.GameSocket.Hubs
             }
         }
 
+        /// <summary>
+        /// Raised by client when game mode rules are changed
+        /// </summary>
+        public async Task ChangeGameRules(Lobby lobby, object gameRules, string creatorConnectionID)
+        {
+            if (_lobbies[lobby.SessionID].LobbyCreator.ConnectionID != creatorConnectionID)
+                return;
+            var old = _lobbies[lobby.SessionID].GameMode;
+            _lobbies[lobby.SessionID].GameMode = old;
+            await this.Clients.Clients(_lobbies[lobby.SessionID].Players
+                .Select(x => x.Value.ConnectionID)).SendAsync("LobbyGameRulesChanged", new LobbyGameRulesChangedEventArgs
+            {
+                After = _lobbies[lobby.SessionID].GameMode,
+                Before = old
+            });
+        }
 
+        /// <summary>
+        /// Raised by the client to get the current set of gamerules for the gamemode
+        /// </summary>
+        public async Task RequestCurrentGameRules(ulong lobbyID, string playerConnectionID)
+        {
+            if (!_lobbies[lobbyID].Players.Any(x => x.Value.ConnectionID == playerConnectionID))
+                return;
+            await this.Clients.Caller.SendAsync("LobbyGameRulesRequested", new LobbyGameRulesRequestedEventArgs
+            {
+                CurrentRules = _lobbies[lobbyID].GameMode
+            });
+        }
     }
 }
