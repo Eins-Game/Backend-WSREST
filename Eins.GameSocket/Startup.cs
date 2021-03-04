@@ -1,6 +1,5 @@
 using Eins.GameSocket.Hubs;
-using Eins.TransportEntities;
-using Eins.TransportEntities.GameSession;
+using Eins.TransportEntities.TestEntities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -20,13 +19,14 @@ namespace Eins.GameSocket
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSignalR();
-            //Player connection IDs 
-            services.AddSingleton(new ConcurrentDictionary<string, Player>());
-            //List of lobbies
-            services.AddSingleton(new ConcurrentBag<Lobby>());
-            //List of games
-            services.AddSingleton(new ConcurrentBag<Game>());
+            services.AddSignalR(x =>
+            {
+                x.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+            });
+            services.AddSingleton(new Game
+            {
+                GameID = 0
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -41,7 +41,7 @@ namespace Eins.GameSocket
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<GameLobbyHub>("/gamelobby");
+                endpoints.MapHub<EinsHub>("/gamelobby");
             });
         }
     }
