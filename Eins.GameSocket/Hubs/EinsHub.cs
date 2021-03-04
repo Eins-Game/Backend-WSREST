@@ -14,6 +14,7 @@ namespace Eins.GameSocket.Hubs
 
         //SingleGame -> Temporary until Lobby ligic
         private readonly Game _game;
+        Random _r = new Random();
 
         public EinsHub(ILogger<EinsHub> logger, Game game)
         {
@@ -21,21 +22,24 @@ namespace Eins.GameSocket.Hubs
             this._game = game;
         }
 
-        public async Task JoinGame()
+        public async Task JoinGame(string username = "unnamed")
         {
-            this._game.Players.Add(this._game.Players.Count, this.Context.ConnectionId);
+            var np = new Player
+            {
+                ConnectionID = this.Context.ConnectionId,
+                Username = username
+            };
+            for (int i = 0; i < 7; i++)
+                np.HeldCards.Add(GetRandomCard());
+            this._game.Players.Add(this._game.Players.Count, np);
             if (this._game.CurrentPlayer == default)
             {
                 this._game.CurrentPlayer = this.Context.ConnectionId;
-                this._game.CurrentStack.Push(new Card
-                {
-                    Color = CardColor.Red,
-                    Value = 3
-                });
-                await this.Clients.Client(this._game.CurrentPlayer).SendAsync("TurnNotification", 103, this._game.CurrentStack.Peek());
+                this._game.CurrentStack.Push(GetRandomCard());
+                await this.Clients.Client(this._game.CurrentPlayer).SendAsync("TurnNotification", 103, this._game.CurrentStack.Peek(), np);
             }
 
-            await this.Clients.All.SendAsync("JoinGameSuccess", 200, $"\"{this.Context.ConnectionId}\" Sucessfully connected (Player {_game.Players.Count-1})");
+            await this.Clients.All.SendAsync("JoinGameSuccess", 200, $"\"{username}\" Sucessfully connected (Player {_game.Players.Count-1})");
         }
 
         //Validate playbility on client, but also validated here just in case
@@ -43,7 +47,14 @@ namespace Eins.GameSocket.Hubs
         {
             if (this.Context.ConnectionId != this._game.CurrentPlayer)
             {
-                await this.Clients.Caller.SendAsync("PlayCardFailed", 401, "Not your turn");
+                await this.Clients.Caller
+                    .SendAsync("PlayCardFailed", 401, "Not your turn");
+                return;
+            }
+            var curPlayer = this._game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
+            if (!curPlayer.Value.HeldCards.Any(x => x == card)){
+                await this.Clients.Caller
+                    .SendAsync("PlayCardFailed", 401, "You dont have a card like that");
                 return;
             }
 
@@ -52,16 +63,51 @@ namespace Eins.GameSocket.Hubs
             if (card.Color.HasFlag(topCard.Color) || card.Value == topCard.Value)
             {
                 this._game.CurrentStack.Push(card);
-                var curPlayerID = this._game.Players.First(x => x.Value == this.Context.ConnectionId).Key;
+                curPlayer.Value.HeldCards.Remove(card);
+                var curPlayerID = curPlayer.Key;
                 curPlayerID++;
                 if (curPlayerID == this._game.Players.Count)
                     curPlayerID = 0;
-                this._game.CurrentPlayer = this._game.Players[curPlayerID];
-                await this.Clients.All.SendAsync("PlayCardSuccess", 200, this.Context.ConnectionId, card);
-                await this.Clients.Client(this._game.CurrentPlayer).SendAsync("TurnNotification", 103, card);
+                this._game.CurrentPlayer = this._game.Players[curPlayerID].ConnectionID;
+                await this.Clients.All.SendAsync("PlayCardSuccess", 
+                    200, 
+                    curPlayer.Value, 
+                    card);
+                await this.Clients.Client(this._game.CurrentPlayer)
+                    .SendAsync("TurnNotification",
+                    103, 
+                    card, 
+                    this._game.Players[curPlayerID]);
             }
             else
-                await this.Clients.Caller.SendAsync("PlayCardFailed", 400, "Card not playable");
+                await this.Clients.Caller
+                    .SendAsync("PlayCardFailed", 400, "Card not playable");
+        }
+
+        public async Task DrawCard()
+        {
+            if (this.Context.ConnectionId != this._game.CurrentPlayer)
+            {
+                await this.Clients.Caller
+                    .SendAsync("DrawCardFailed", 401, "Not your turn");
+                return;
+            }
+            var player = this._game.Players
+                .First(x => x.Value.ConnectionID == this.Context.ConnectionId);
+            var rndCard = GetRandomCard();
+            this._game.Players[player.Key].HeldCards.Add(rndCard);
+            await this.Clients.Caller.SendAsync("DrawCardSuccess", 200, rndCard);
+        }
+
+        private Card GetRandomCard()
+        {
+            var vals = Enum.GetValues<CardColor>();
+            var card = new Card
+            {
+                Color = vals[this._r.Next(0, 4)],
+                Value = this._r.Next(0, 10)
+            };
+            return card;
         }
     }
 }

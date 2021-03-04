@@ -1,6 +1,7 @@
 ﻿using Eins.TransportEntities.TestEntities;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Eins.GameSocket.Test
@@ -28,31 +29,45 @@ namespace Eins.GameSocket.Test
             {
                 Console.WriteLine($"{code} {message}");
                 if (code == 400)
-                {
                     _ = Task.Run(() => SendCard(hub));
-                }
+
                 await Task.Delay(1);
             });
-            hub.On<int, string, Card>("PlayCardSuccess", (code, message, card) =>
+            hub.On<int, Player, Card>("PlayCardSuccess", (code, message, card) =>
             {
-                Console.WriteLine($"-- {code} Player:{message}");
+                Console.WriteLine($"-- {code} Player:{message.Username}");
                 Console.WriteLine($"---- Card Played:{card.Color} {card.Value}");
                 return Task.CompletedTask;
             });
-            hub.On<int, Card>("TurnNotification", async (code, card) =>
+            hub.On<int, Card, Player>("TurnNotification", async (code, card, player) =>
             {
                 Console.WriteLine($"{code} Its your turn!");
                 Console.WriteLine($"Last card played:{card.Color} {card.Value}");
+                var cards = player.HeldCards.Select(x => $"{x.Color} {x.Value}");
+                var cardstring = string.Join(",", cards);
+                Console.WriteLine("Your cards are: " + cardstring);
                 _ = Task.Run(() => SendCard(hub));
                 await Task.Delay(1);
             });
+            hub.On<int, Card>("DrawCardSuccess", (code, card) =>
+            {
+                Console.WriteLine($"-- {code} Card drawn: {card.Color} {card.Value}");
+                return Task.CompletedTask;
+            });
 
-            await hub.SendAsync("JoinGame");
+            Console.WriteLine("Enter Username");
+            var username = Console.ReadLine();
+            await hub.SendAsync("JoinGame", username);
             await Task.Delay(-1);
         }
 
         public static async Task SendCard(HubConnection hub)
         {
+            Console.WriteLine("Want to draw a card? (1=yes)");
+            while (Convert.ToInt32(Console.ReadLine()) == 1)
+            {
+                await hub.SendAsync("DrawCard");
+            }
             Console.WriteLine("Enter Color (1 Red, 2 Green, 4 Yellow, 8 Blue)");
             var cardColor = Convert.ToInt32(Console.ReadLine());
             Console.WriteLine("Enter Value");

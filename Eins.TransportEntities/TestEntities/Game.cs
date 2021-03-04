@@ -10,7 +10,7 @@ namespace Eins.TransportEntities.TestEntities
         public Stack<Card> CurrentStack { get; set; } = new Stack<Card>();
 
         //ConnectionIDs, Position (zeroIndex)
-        public Dictionary<int, string> Players { get; set; } = new Dictionary<int, string>();
+        public Dictionary<int, Player> Players { get; set; } = new Dictionary<int, Player>();
 
         //ConnectionID
         public string CurrentPlayer { get; set; } = default;

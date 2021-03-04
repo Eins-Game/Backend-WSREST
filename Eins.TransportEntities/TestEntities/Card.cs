@@ -11,6 +11,31 @@ namespace Eins.TransportEntities.TestEntities
 
         //Value must be -1 for Event to be checked
         public CardEvent Event { get; set; }
+
+        #region Overrides
+        public override bool Equals(object obj)
+        {
+            if (obj is Card c)
+                return (Value == c.Value)
+                    && (Color == c.Color)
+                    && (Event == c.Event);
+            return base.Equals(obj);
+        }
+        public static bool operator ==(Card c1, Card c2) 
+        {
+            return (c1.Value == c2.Value)
+                    && (c1.Color == c2.Color)
+                    && (c1.Event == c2.Event);
+        }
+        public static bool operator !=(Card c1, Card c2)
+        {
+            return !((c1.Value == c2.Value)
+                    && (c1.Color == c2.Color)
+                    && (c1.Event == c2.Event));
+        }
+        public override int GetHashCode()
+            => base.GetHashCode();
+        #endregion
     }
 
     [Flags]
