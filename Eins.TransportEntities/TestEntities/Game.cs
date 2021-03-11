@@ -14,6 +14,27 @@ namespace Eins.TransportEntities.TestEntities
 
         //ConnectionID
         public string CurrentPlayer { get; set; } = default;
-        public string NextPlayer { get; set; }
+        public GameStatus Status { get; set; } = GameStatus.NotInitialized;
+
+        public Game(ulong lobbyID,
+            Dictionary<int, Player> players,
+            string firstPlayer,
+            Card startingCard = default)
+        {
+            this.GameID = lobbyID;
+            this.Players = players;
+            this.CurrentPlayer = firstPlayer;
+            
+            //Implement later
+            //this.CurrentStack.Push(startingCard);
+        }
+    }
+
+    public enum GameStatus
+    {
+        NotInitialized,
+        Initializing,
+        Started,
+        Ended
     }
 }

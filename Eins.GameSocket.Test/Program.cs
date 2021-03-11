@@ -10,12 +10,8 @@ namespace Eins.GameSocket.Test
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
-
-            //await Task.Delay(5000); //Wait for shit to start up just in case
-
             var hub = new HubConnectionBuilder()
-                .WithUrl("https://localhost:49153/gamelobby")
+                .WithUrl($"https://localhost:49153/gamelobby")
                 .Build();
 
             await hub.StartAsync();

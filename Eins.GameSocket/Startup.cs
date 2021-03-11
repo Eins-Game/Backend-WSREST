@@ -1,4 +1,5 @@
 using Eins.GameSocket.Hubs;
+using Eins.TransportEntities.Lobby;
 using Eins.TransportEntities.TestEntities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,14 +20,18 @@ namespace Eins.GameSocket
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSignalR(x =>
-            {
-                x.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
-            });
-            services.AddSingleton(new Game
-            {
-                GameID = 0
-            });
+            services.AddSignalR();
+
+            //Key = LobbyID
+            services.AddSingleton(new ConcurrentDictionary<ulong, Game>());
+
+            //Key = ID
+            //ID = Snowflake -> soon™
+            //Snowflake -> Similar IDs like discord
+            //42 Bits timestamp (in miliseconds since some Date, maybe 01.01.2021 0:00:00)
+            //10 bits Machine ID (basically 0 for now)
+            //12 Bits for sequence (goes up if 2 are generated at the same time)
+            services.AddSingleton(new ConcurrentDictionary<ulong, Lobby>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -41,7 +46,7 @@ namespace Eins.GameSocket
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<EinsHub>("/gamelobby");
+                endpoints.MapHub<GameHub>("/game");
             });
         }
     }
