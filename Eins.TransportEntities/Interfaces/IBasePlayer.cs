@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Eins.TransportEntities.TestEntities
+namespace Eins.TransportEntities.Interfaces
 {
-    public class Player
+    public interface IBasePlayer
     {
+        public ulong ID { get; set; }
         public string ConnectionID { get; set; }
         public string Username { get; set; }
-        public List<Card> HeldCards { get; set; } = new List<Card>();
+        public List<IBaseCard> HeldCards { get; set; }
     }
 }
