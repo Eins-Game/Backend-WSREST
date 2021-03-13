@@ -27,6 +27,7 @@ namespace Eins.TransportEntities.Eins
         public Task<bool> IsGameFinished()
             => Task.FromResult(this.Players.Any(x => x.Value.HeldCards.Count == 0));
 
+        //TODO: Implement Card Push
         public async Task<bool> PushCard(HubConnection hub, string playerConnectionID, IBaseCard card)
         {
             var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
