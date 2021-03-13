@@ -1,6 +1,8 @@
 ﻿using Eins.TransportEntities.Interfaces;
+using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,9 +17,7 @@ namespace Eins.TransportEntities.Eins
         public GameStatus Status { get; set; }
 
         public Task<bool> CanPlay(string playerConnectionID)
-        {
-            throw new NotImplementedException();
-        }
+            => Task.FromResult(playerConnectionID == this.CurrentPlayer);
 
         public Task<bool> InitializeGame()
         {
@@ -25,13 +25,21 @@ namespace Eins.TransportEntities.Eins
         }
 
         public Task<bool> IsGameFinished()
-        {
-            throw new NotImplementedException();
-        }
+            => Task.FromResult(this.Players.Any(x => x.Value.HeldCards.Count == 0));
 
-        public Task<bool> PushCard(string playerConnectionID, IBaseCard card)
+        public async Task<bool> PushCard(HubConnection hub, string playerConnectionID, IBaseCard card)
         {
-            throw new NotImplementedException();
+            var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
+            if (card is ActionCard actionCard)
+            {
+                await actionCard.DoThing();
+                //Aussetzen -> CurrentPlayer + 2
+                //+2 -> Spieler karten DrawCard 2 mal, CurrentPlayer + 2
+                //+4 -> Spieler karten DrawCard 4 mal, CurrentPlayer + 2
+                //WishCard -> LastStack card to w0shed Card
+                //RichtungsWechsel -> ?
+            }
+            return false;
         }
 
         public Task<bool> SetNextPlayer()

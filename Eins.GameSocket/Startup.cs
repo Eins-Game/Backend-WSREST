@@ -1,6 +1,6 @@
 using Eins.GameSocket.Hubs;
+using Eins.TransportEntities.Eins;
 using Eins.TransportEntities.Lobby;
-using Eins.TransportEntities.TestEntities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;

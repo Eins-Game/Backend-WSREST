@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.SignalR.Client;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace Eins.TransportEntities.Interfaces
     public interface IBaseGame
     {
         public ulong GameID { get; set; }
-        public IEnumerable<IBaseCard> CurrentStack { get; set; } 
+        public IEnumerable<IBaseCard> CurrentStack { get; set; }
 
         //Position (zeroIndex)
         public Dictionary<int, IBasePlayer> Players { get; set; }
@@ -21,7 +22,7 @@ namespace Eins.TransportEntities.Interfaces
         public Task<bool> StartGame();
         public Task<bool> CanPlay(string playerConnectionID);
         public Task<bool> SetNextPlayer();
-        public Task<bool> PushCard(string playerConnectionID, IBaseCard card);
+        public Task<bool> PushCard(HubConnection hub, string playerConnectionID, IBaseCard card);
         public Task<bool> IsGameFinished();
     }
 

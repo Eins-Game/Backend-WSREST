@@ -38,16 +38,5 @@ namespace Eins.GameSocket.Hubs
         public async Task DrawCard()
         {
         }
-
-        //private Card GetRandomCard()
-        //{
-        //    var vals = Enum.GetValues<CardColor>();
-        //    var card = new Card
-        //    {
-        //        Color = vals[this._r.Next(0, 4)],
-        //        Value = this._r.Next(0, 10)
-        //    };
-        //    return card;
-        //}
     }
 }

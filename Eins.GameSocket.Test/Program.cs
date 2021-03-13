@@ -1,4 +1,4 @@
-﻿using Eins.TransportEntities.TestEntities;
+﻿using Eins.TransportEntities.Interfaces;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Linq;
@@ -29,25 +29,25 @@ namespace Eins.GameSocket.Test
 
                 await Task.Delay(1);
             });
-            hub.On<int, Player, Card>("PlayCardSuccess", (code, message, card) =>
+            hub.On<int, IBasePlayer, IBaseCard>("PlayCardSuccess", (code, message, card) =>
             {
                 Console.WriteLine($"-- {code} Player:{message.Username}");
-                Console.WriteLine($"---- Card Played:{card.Color} {card.Value}");
+                //Console.WriteLine($"---- Card Played:{card.Color} {card.Value}");
                 return Task.CompletedTask;
             });
-            hub.On<int, Card, Player>("TurnNotification", async (code, card, player) =>
+            hub.On<int, IBaseCard, IBasePlayer>("TurnNotification", async (code, card, player) =>
             {
                 Console.WriteLine($"{code} Its your turn!");
-                Console.WriteLine($"Last card played:{card.Color} {card.Value}");
-                var cards = player.HeldCards.Select(x => $"{x.Color} {x.Value}");
-                var cardstring = string.Join(",", cards);
-                Console.WriteLine("Your cards are: " + cardstring);
+                //Console.WriteLine($"Last card played:{card.Color} {card.Value}");
+                //var cards = player.HeldCards.Select(x => $"{x.Color} {x.Value}");
+                //var cardstring = string.Join(",", cards);
+                //Console.WriteLine("Your cards are: " + cardstring);
                 _ = Task.Run(() => SendCard(hub));
                 await Task.Delay(1);
             });
-            hub.On<int, Card>("DrawCardSuccess", (code, card) =>
+            hub.On<int, IBaseCard>("DrawCardSuccess", (code, card) =>
             {
-                Console.WriteLine($"-- {code} Card drawn: {card.Color} {card.Value}");
+                //Console.WriteLine($"-- {code} Card drawn: {card.Color} {card.Value}");
                 return Task.CompletedTask;
             });
 
@@ -68,11 +68,11 @@ namespace Eins.GameSocket.Test
             var cardColor = Convert.ToInt32(Console.ReadLine());
             Console.WriteLine("Enter Value");
             var cardValue = Convert.ToInt32(Console.ReadLine());
-            await hub.InvokeAsync("PlayCard", new Card
-            {
-                Color = (CardColor)cardColor,
-                Value = cardValue
-            });
+            //await hub.InvokeAsync("PlayCard", new IBaseCard
+            //{
+            //    //Color = (CardColor)cardColor,
+            //    Value = cardValue
+            //});
         }
     }
 }
