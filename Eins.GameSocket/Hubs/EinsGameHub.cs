@@ -1,4 +1,5 @@
-﻿using Eins.TransportEntities.Lobby;
+﻿using Eins.TransportEntities.Eins;
+using Eins.TransportEntities.Lobby;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,14 +10,14 @@ using System.Threading.Tasks;
 
 namespace Eins.GameSocket.Hubs
 {
-    public class GameHub : Hub
+    public class EinsGameHub : Hub
     {
-        private readonly ILogger<GameHub> _logger;
+        private readonly ILogger<EinsGameHub> _logger;
         private readonly ConcurrentDictionary<ulong, Lobby> _lobbies;
         private readonly ConcurrentDictionary<ulong, Game> _games;
         Random _r = new Random();
 
-        public GameHub(ILogger<GameHub> logger, 
+        public EinsGameHub(ILogger<EinsGameHub> logger, 
             ConcurrentDictionary<ulong, Lobby> lobbies,
             ConcurrentDictionary<ulong, Game> games)
         {
@@ -38,15 +39,15 @@ namespace Eins.GameSocket.Hubs
         {
         }
 
-        private Card GetRandomCard()
-        {
-            var vals = Enum.GetValues<CardColor>();
-            var card = new Card
-            {
-                Color = vals[this._r.Next(0, 4)],
-                Value = this._r.Next(0, 10)
-            };
-            return card;
-        }
+        //private Card GetRandomCard()
+        //{
+        //    var vals = Enum.GetValues<CardColor>();
+        //    var card = new Card
+        //    {
+        //        Color = vals[this._r.Next(0, 4)],
+        //        Value = this._r.Next(0, 10)
+        //    };
+        //    return card;
+        //}
     }
 }

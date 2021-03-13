@@ -8,11 +8,11 @@ namespace Eins.TransportEntities.Eins
 {
     public class Game : IBaseGame
     {
-        public ulong GameID { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public IEnumerable<IBaseCard> CurrentStack { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public Dictionary<int, IBasePlayer> Players { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public string CurrentPlayer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public GameStatus Status { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ulong GameID { get; set; }
+        public IEnumerable<IBaseCard> CurrentStack { get; set; } = new Stack<IBaseCard>();
+        public Dictionary<int, IBasePlayer> Players { get; set; }
+        public string CurrentPlayer { get; set; }
+        public GameStatus Status { get; set; }
 
         public Task<bool> CanPlay(string playerConnectionID)
         {

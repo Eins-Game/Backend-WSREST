@@ -46,7 +46,7 @@ namespace Eins.GameSocket
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<GameHub>("/game");
+                endpoints.MapHub<EinsGameHub>("/game");
             });
         }
     }

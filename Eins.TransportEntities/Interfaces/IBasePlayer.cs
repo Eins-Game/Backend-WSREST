@@ -9,6 +9,7 @@ namespace Eins.TransportEntities.Interfaces
         public ulong ID { get; set; }
         public string ConnectionID { get; set; }
         public string Username { get; set; }
+        public bool IsBot { get; set; }
         public List<IBaseCard> HeldCards { get; set; }
     }
 }
