@@ -8,10 +8,11 @@ namespace Eins.TransportEntities.Eins
     public class ActionCard : Card
     {
         public ActionCardType CardType { get; set; }
-        public ActionCard()
+        public ActionCard(CardColor color, ActionCardType action) : base(-1,  color)
         {
-            this.Value = -1;
+            this.CardType = action;
         }
+
         public Task<bool> DoThing()
         {
             return Task.FromResult(true);

@@ -10,6 +10,13 @@ namespace Eins.TransportEntities.Eins
     {
         public int Value { get; set; }
         public CardColor Color { get; set; }
+
+        public Card(int value, CardColor color)
+        {
+            this.Value = value;
+            this.Color = color;
+        }
+
         public Task<bool> IsPlayable(IBaseCard card2)
         {
             // card2 = oberste Stapel Karte

@@ -19,23 +19,23 @@ namespace Eins.TransportEntities.Interfaces
         public GameStatus Status { get; set; }
 
         //TODO: Replace with game initialized event args
-        public Task<bool> InitializeGame();
+        public Task<bool> InitializeGame(HubConnection hub = default);
 
         //TODO: Replace with game started event args
-        public Task<bool> StartGame();
+        public Task<bool> StartGame(HubConnection hub = default);
 
 
-        public Task<bool> CanPlay(string playerConnectionID);
+        public Task<bool> CanPlay(string playerConnectionID, HubConnection hub = default);
 
         //TODO: Replace with next player event args
-        public Task<bool> SetNextPlayer();
+        public Task<bool> SetNextPlayer(HubConnection hub = default);
 
         //TODO: Replace with played card event args
-        public Task<bool> PushCard(HubConnection hub, string playerConnectionID, IBaseCard card);
+        public Task<bool> PushCard(string playerConnectionID, IBaseCard card, HubConnection hub = default);
 
         //TODO: Replace with game ended event args
-        public Task<bool> IsGameFinished();
-        public Task<IBaseCard> DrawCard(string playerConnectionID);
+        public Task<bool> IsGameFinished(HubConnection hub = default);
+        public Task<IBaseCard> DrawCard(string playerConnectionID, HubConnection hub = default);
     }
 
     public enum GameStatus
