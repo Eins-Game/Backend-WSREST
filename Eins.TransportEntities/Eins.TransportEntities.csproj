@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Eins\CustomEventArgs\" />
     <Folder Include="EventArgs\" />
   </ItemGroup>
 

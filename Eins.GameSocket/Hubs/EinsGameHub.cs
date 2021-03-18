@@ -28,11 +28,23 @@ namespace Eins.GameSocket.Hubs
 
         public async Task JoinGame()
         {
+
         }
 
         //Validate playbility on client, but also validated here just in case
         public async Task PlayCard()
         {
+            //If card await userinput
+            //if card = black
+            //-> game IO in progress = true
+            //-> send IO request for color
+            //continue with PlayCard
+        }
+
+        public async Task DoInteraction(Card.CardColor color)
+        {
+            //get color and set for game IO
+            //set IO in progress = false;
         }
 
         public async Task DrawCard()

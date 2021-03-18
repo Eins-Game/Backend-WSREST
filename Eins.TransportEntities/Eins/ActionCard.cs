@@ -13,11 +13,6 @@ namespace Eins.TransportEntities.Eins
             this.CardType = action;
         }
 
-        public Task<bool> DoThing()
-        {
-            return Task.FromResult(true);
-        }
-
         public enum ActionCardType
         {
             Draw2,

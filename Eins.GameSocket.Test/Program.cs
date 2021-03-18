@@ -12,8 +12,8 @@ namespace Eins.GameSocket.Test
     {
         static async Task Main(string[] args)
         {
-            var g = new Game(new List<Player>(), default);
-            g.GetRandomCard();
+            var g = new Game(0, new List<Player>(), default);
+            //g.GetRandomCard();
         }
     }
 }
