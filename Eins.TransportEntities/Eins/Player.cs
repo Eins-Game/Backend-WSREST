@@ -1,7 +1,9 @@
 ﻿using Eins.TransportEntities.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Eins.TransportEntities.Eins
 {
@@ -18,13 +20,24 @@ namespace Eins.TransportEntities.Eins
             this.ID = id;
             this.ConnectionID = connectionID;
 
-            //TODO: Do random if default
             if (userName == default)
                 this.Username = userName;
             else
                 this.Username = $"unnamed{id}";
 
             this.IsBot = isBot;
+        }
+
+        public Task<bool> HasCard(Card card)
+        {
+            if (card is ActionCard actionCard)
+            {
+                var actCards = this.HeldCards.Where(x => x is ActionCard) as IEnumerable<ActionCard>;
+                return Task.FromResult(actCards.Any(x => x.CardType == actionCard.CardType
+                && x.Color == actionCard.Color));
+            }
+            return Task.FromResult(HeldCards.Any(x => ((Card)x).Color == card.Color
+                && ((Card)x).Value == card.Value));
         }
     }
 }

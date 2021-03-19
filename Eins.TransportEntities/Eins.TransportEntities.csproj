@@ -9,9 +9,4 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Eins\CustomEventArgs\" />
-    <Folder Include="EventArgs\" />
-  </ItemGroup>
-
 </Project>

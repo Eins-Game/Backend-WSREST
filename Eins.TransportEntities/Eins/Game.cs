@@ -1,4 +1,6 @@
-﻿using Eins.TransportEntities.Interfaces;
+﻿using Eins.TransportEntities.Eins.CustomEventArgs;
+using Eins.TransportEntities.EventArgs;
+using Eins.TransportEntities.Interfaces;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
@@ -40,33 +42,65 @@ namespace Eins.TransportEntities.Eins
             this.Rules = rules;
         }
 
-        //TODO: implement Initialize
-        public Task<bool> InitializeGame(Hub hub = default)
+        public async Task<bool> InitializeGame(Hub hub = default)
         {
+            var strippedPlayers = new List<EventArgs.StrippedEntities.Player>();
             foreach (var player in this.Players)
             {
                 for (int i = 0; i < this.Rules.CardsPerPlayer; i++)
                 {
                     player.Value.HeldCards.Add(GetRandomCard());
                 }
+                var sp = new EventArgs.StrippedEntities.Player
+                {
+                    ConnectionID = player.Value.ConnectionID,
+                    ID = player.Value.ID,
+                    OrderID = player.Key,
+                    HeldCardAmount = player.Value.HeldCards.Count,
+                    Username = player.Value.Username
+                };
+                strippedPlayers.Add(sp);
             }
             this.Status = GameStatus.Initialized;
-            return Task.FromResult(true);
+            foreach (var item in this.Players)
+            {
+                var initArgs = new InitializedEventArgs
+                {
+                    Code = 200,
+                    Players = strippedPlayers,
+                    YourCards = item.Value.HeldCards
+                };
+                await hub.Clients.Client(item.Value.ConnectionID)
+                    .SendAsync("Initialized", initArgs);
+            }
+            return true;
         }
 
-        //TODO: Implement StartGame
-        public Task<bool> StartGame(Hub hub = default)
+        public async Task<GameStartedEventArgs> StartGame(Hub hub = default)
         {
             this.CurrentPlayer = this.Players[0].ConnectionID;
 
             //TODO: Check card events on intial card
             ((Stack<IBaseCard>)this.CurrentStack).Push(GetRandomCard());
             this.Status = GameStatus.Started;
-            return Task.FromResult(true);
+            var topCard = await GetTopCard();
+            var startargs = new GameStartedEventArgs
+            {
+                Code = 200,
+                FirstCard = topCard
+            };
+
+            return startargs;
         }
 
         public Task<bool> CanPlay(string playerConnectionID, Hub hub = default)
             => Task.FromResult(playerConnectionID == this.CurrentPlayer);
+
+        public Task<IBaseCard> GetTopCard(Hub hub = default)
+        {
+            var stack = this.CurrentStack as Stack<IBaseCard>;
+            return Task.FromResult(stack.Peek());
+        }
 
         public Task<IBaseCard> DrawCard(string playerConnectionID, Hub hub = default)
         {
@@ -76,49 +110,56 @@ namespace Eins.TransportEntities.Eins
             return Task.FromResult(card);
         }
 
-        //TODO: Implement Card Push
         public async Task<bool> PushCard(string playerConnectionID, IBaseCard card, Hub hub = default)
         {
             var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
+
             if (card is ActionCard actionCard)
             {
                 switch (actionCard.CardType)
                 {
                     case ActionCard.ActionCardType.Draw2:
                         await DoPlus2(hub);
-                        break;
-                    case ActionCard.ActionCardType.Draw4:
-                        actionCard = await DoPlus4(hub, actionCard);
 
                         //Basically skip the next player, maybe do it with the SkipCard method later
-                        var next = await GetNextPlayer();
-                        this.CurrentPlayer = next.ConnectionID;
+                        var next2 = await GetNextPlayer();
+                        this.CurrentPlayer = next2.ConnectionID;
                         break;
+
+                    case ActionCard.ActionCardType.Draw4:
+                        card = await DoPlus4(hub, actionCard);
+
+                        //Basically skip the next player, maybe do it with the SkipCard method later
+                        var next4 = await GetNextPlayer();
+                        this.CurrentPlayer = next4.ConnectionID;
+                        break;
+
                     case ActionCard.ActionCardType.Skip:
                         await DoSkip(hub);
                         break;
+
                     case ActionCard.ActionCardType.Switch:
                         await DoSwitch(hub);
                         break;
+
                     case ActionCard.ActionCardType.Wish:
-                        actionCard = await DoWish(hub, actionCard);
+                        card = await DoWish(hub, actionCard);
                         break;
+
                     default:
                         break;
                 }
-                //Aussetzen -> CurrentPlayer + 2
-                //+2 -> Spieler karten DrawCard 2 mal, CurrentPlayer + 2
-                //+4 -> Spieler karten DrawCard 4 mal, CurrentPlayer + 2
-                //WishCard -> LastStack card to wished Card color aka change wish card color
-                //RichtungsWechsel -> ?
             }
-            return false;
+            var asStack = this.CurrentStack as Stack<IBaseCard>;
+            asStack.Push(card);
+            return true;
         }
 
-        //TODO: Implement SetNextPlayer
-        public Task<bool> SetNextPlayer(Hub hub = default)
+        public async Task<IBasePlayer> SetNextPlayer(Hub hub = default)
         {
-            throw new NotImplementedException();
+            var next = await GetNextPlayer();
+            this.CurrentPlayer = next.ConnectionID;
+            return next;
         }
 
         public Task<bool> IsGameFinished(Hub hub = default)
@@ -166,10 +207,24 @@ namespace Eins.TransportEntities.Eins
             var newCard2 = GetRandomCard();
             nextPlayer.HeldCards.Add(newCard1);
             nextPlayer.HeldCards.Add(newCard2);
-            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.ConnectionID).ToArray());
 
-            //Create CardDrawn EventArgs
-            await playerConnections.SendAsync("CardDrawn", new object());
+            var playerConnectionsOthers = hub.Clients.Clients(this.Players
+                .Where(x => x.Value.ConnectionID != nextPlayer.ConnectionID)
+                .Select(x => x.Value.ConnectionID).ToArray());
+            var playerConnectionThem = hub.Clients.Client(nextPlayer.ConnectionID);
+            var nextPlayerOrderID = this.Players.First(x => x.Value.ConnectionID == nextPlayer.ConnectionID);
+
+
+            var drawnArgsOthers1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard1);
+
+            var drawnArgsOthers2 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem2 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard2);
+
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem1);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers1);
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem2);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers2);
             return true;
         }
 
@@ -184,38 +239,81 @@ namespace Eins.TransportEntities.Eins
             nextPlayer.HeldCards.Add(newCard2);
             nextPlayer.HeldCards.Add(newCard3);
             nextPlayer.HeldCards.Add(newCard4);
-            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.ConnectionID).ToArray());
+
+            var playerConnectionsOthers = hub.Clients.Clients(this.Players
+                .Where(x => x.Value.ConnectionID != nextPlayer.ConnectionID)
+                .Select(x => x.Value.ConnectionID).ToArray());
+            var playerConnectionThem = hub.Clients.Client(nextPlayer.ConnectionID);
+            var nextPlayerOrderID = this.Players.First(x => x.Value.ConnectionID == nextPlayer.ConnectionID);
+
+            var drawnArgsOthers1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard1);
+
+            var drawnArgsOthers2 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem2 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard2);
+
+            var drawnArgsOthers3 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem3 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard3);
+
+            var drawnArgsOthers4 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
+            var drawnArgsThem4 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard4);
+
 
             card.Color = this.UserInputColor;
 
             this.UserInputColor = 0;
 
-            //Create ColorChange EventArgs
-            await playerConnections.SendAsync("CardColorChanged", new object());
-
-
-            //Create CardDrawn EventArgs
-            await playerConnections.SendAsync("CardDrawn", new object());
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem1);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers1);
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem2);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers2); 
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem3);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers3);
+            await playerConnectionThem.SendAsync("CardDrawn", drawnArgsThem3);
+            await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers3);
             return card;
         }
 
-        private async Task<ActionCard> DoWish(Hub hub, ActionCard card)
+        private Task<ActionCard> DoWish(Hub hub, ActionCard card)
         {
-            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.ConnectionID).ToArray());
-
             card.Color = this.UserInputColor;
-
             this.UserInputColor = 0;
-
-            await playerConnections.SendAsync("CardColorChanged", new object());
-            return card;
+            return Task.FromResult(card);
         }
         private async Task<bool> DoSkip(Hub hub)
         {
+            var playerConnections = hub.Clients.Clients(this.Players.Select(x => x.Value.ConnectionID).ToArray());
+
+            var skipped = await GetNextPlayer();
+            var skipargs = new SkippedEventArgs
+            {
+                Code = 200,
+                SkippedPlayerConnectionID = skipped.ConnectionID,
+                SkippedPlayerID = skipped.ID,
+                SkippedPlayerUsername = skipped.Username
+            };
+            await playerConnections.SendAsync("SkippedPlayer", skipargs);
+            var next2 = await GetNextPlayer();
+            this.CurrentPlayer = next2.ConnectionID;
             return true;
         }
         private async Task<bool> DoSwitch(Hub hub)
         {
+            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.ConnectionID).ToArray());
+
+            this.Reversed = !this.Reversed;
+
+            var next = await GetNextPlayer();
+            var switchargs = new SwitchedEventArgs
+            {
+                Code = 200,
+                NextPlayerConnectionID = next.ConnectionID,
+                NextPlayerID = next.ID,
+                NextPlayerUsername = next.Username
+            };
+
+            await playerConnections.SendAsync("SwitchedDirection", switchargs);
+
             return true;
         }
     }
