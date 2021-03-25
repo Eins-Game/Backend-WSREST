@@ -39,19 +39,31 @@ namespace Eins.GameSocket.Hubs
         {
             var game = this._games[gameID];
 
-            //TODO: check if true
-            var canPlay = await game.CanPlay(this.Context.ConnectionId);
+            var canPlay = await game.CanPlayAsync(this.Context.ConnectionId);
+            if (!canPlay)
+            {
+                await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(401, "Not your turn"));
+                return;
+            }
 
             var player = game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
             var einsPlayer = player.Value as Player;
 
-            //TODO: Check if true
-            var hasCard = einsPlayer.HasCard((Card)card);
+            var hasCard = await einsPlayer.HasCardAsync((Card)card);
+            if (!hasCard)
+            {
+                await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(400, "You dont have a card like that"));
+                return;
+            }
             var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.ConnectionID));
 
-            //TODO: Check if true
-            var topCard = await game.GetTopCard();
+            var topCard = await game.GetTopCardAsync();
             var validCard = await card.IsPlayable(topCard);
+            if (!validCard)
+            {
+                await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(409, "Card is not playble"));
+                return;
+            }
 
             var playedArgs = new CardPlayedEventArgs
             {
@@ -97,8 +109,12 @@ namespace Eins.GameSocket.Hubs
         {
             var game = this._games[gameID];
 
-            //TODO: check if true
-            var canPlay = await game.CanPlay(this.Context.ConnectionId);
+            var canPlay = await game.CanPlayAsync(this.Context.ConnectionId);
+            if (!canPlay)
+            {
+                await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(401, "Not your turn"));
+                return;
+            }
 
             game.UserInputColor = color;
 
@@ -121,8 +137,12 @@ namespace Eins.GameSocket.Hubs
             var game = this._games[gameID];
             var player = game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
 
-            //TODO: check if true
-            var canDraw = game.CanPlay(this.Context.ConnectionId);
+            var canDraw = await game.CanPlayAsync(this.Context.ConnectionId);
+            if (!canDraw)
+            {
+                await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(401, "Not your turn"));
+                return;
+            }
 
             var card = await game.DrawCard(player.Value.ConnectionID);
 

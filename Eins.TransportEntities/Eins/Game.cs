@@ -83,7 +83,7 @@ namespace Eins.TransportEntities.Eins
             //TODO: Check card events on intial card
             ((Stack<IBaseCard>)this.CurrentStack).Push(GetRandomCard());
             this.Status = GameStatus.Started;
-            var topCard = await GetTopCard();
+            var topCard = await GetTopCardAsync();
             var startargs = new GameStartedEventArgs
             {
                 Code = 200,
@@ -93,10 +93,10 @@ namespace Eins.TransportEntities.Eins
             return startargs;
         }
 
-        public Task<bool> CanPlay(string playerConnectionID, Hub hub = default)
+        public Task<bool> CanPlayAsync(string playerConnectionID, Hub hub = default)
             => Task.FromResult(playerConnectionID == this.CurrentPlayer);
 
-        public Task<IBaseCard> GetTopCard(Hub hub = default)
+        public Task<IBaseCard> GetTopCardAsync(Hub hub = default)
         {
             var stack = this.CurrentStack as Stack<IBaseCard>;
             return Task.FromResult(stack.Peek());

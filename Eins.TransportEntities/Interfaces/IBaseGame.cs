@@ -25,7 +25,7 @@ namespace Eins.TransportEntities.Interfaces
         public Task<GameStartedEventArgs> StartGame(Hub hub = default);
 
 
-        public Task<bool> CanPlay(string playerConnectionID, Hub hub = default);
+        public Task<bool> CanPlayAsync(string playerConnectionID, Hub hub = default);
 
         public Task<IBasePlayer> SetNextPlayer(Hub hub = default);
 

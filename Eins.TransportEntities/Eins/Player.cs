@@ -28,7 +28,7 @@ namespace Eins.TransportEntities.Eins
             this.IsBot = isBot;
         }
 
-        public Task<bool> HasCard(Card card)
+        public Task<bool> HasCardAsync(Card card)
         {
             if (card is ActionCard actionCard)
             {
