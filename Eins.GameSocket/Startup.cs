@@ -22,15 +22,8 @@ namespace Eins.GameSocket
         {
             services.AddSignalR();
 
-            //Key = LobbyID
             services.AddSingleton(new ConcurrentDictionary<ulong, Game>());
 
-            //Key = ID
-            //ID = Snowflake -> soon™
-            //Snowflake -> Similar IDs like discord
-            //42 Bits timestamp (in miliseconds since some Date, maybe 01.01.2021 0:00:00)
-            //10 bits Machine ID (basically 0 for now)
-            //12 Bits for sequence (goes up if 2 are generated at the same time)
             services.AddSingleton(new ConcurrentDictionary<ulong, Lobby>());
         }
 
@@ -47,6 +40,7 @@ namespace Eins.GameSocket
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHub<EinsGameHub>("/game");
+                endpoints.MapHub<LobbyTestHub>("/test");
             });
         }
     }

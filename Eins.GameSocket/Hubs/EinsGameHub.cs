@@ -160,7 +160,7 @@ namespace Eins.GameSocket.Hubs
 
         public async Task HeartBeat()
         {
-            await Task.Delay(10 * 1000);
+            //await Task.Delay(10 * 1000);
             await this.Clients.Caller.SendAsync("Heartbeat");
         }
     }
