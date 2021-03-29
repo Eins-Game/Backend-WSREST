@@ -13,6 +13,9 @@ namespace Eins.TransportEntities.Interfaces
         public ulong GameID { get; set; }
         public IEnumerable<IBaseCard> CurrentStack { get; set; }
 
+        public object GameRules { get; set; }
+        public Type RulesType { get; set; }
+
         //Zero index
         public Dictionary<int, IBasePlayer> Players { get; set; }
 

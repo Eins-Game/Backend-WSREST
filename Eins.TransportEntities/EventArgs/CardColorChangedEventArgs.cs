@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static Eins.TransportEntities.Eins.Card;
+using static Eins.TransportEntities.Eins.EinsCard;
 
 namespace Eins.TransportEntities.EventArgs
 {

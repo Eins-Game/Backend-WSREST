@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 namespace Eins.TransportEntities.Eins
 {
-    public class ActionCard : Card
+    public class EinsActionCard : EinsCard
     {
         public ActionCardType CardType { get; set; }
-        public ActionCard(CardColor color, ActionCardType action) : base(-1,  color)
+        public EinsActionCard(CardColor color, ActionCardType action) : base(-1,  color)
         {
             this.CardType = action;
         }

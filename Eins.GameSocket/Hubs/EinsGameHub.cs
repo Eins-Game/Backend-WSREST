@@ -16,12 +16,12 @@ namespace Eins.GameSocket.Hubs
     {
         private readonly ILogger<EinsGameHub> _logger;
         private readonly ConcurrentDictionary<ulong, Lobby> _lobbies;
-        private readonly ConcurrentDictionary<ulong, Game> _games;
+        private readonly ConcurrentDictionary<ulong, EinsGame> _games;
         Random _r = new Random();
 
         public EinsGameHub(ILogger<EinsGameHub> logger, 
             ConcurrentDictionary<ulong, Lobby> lobbies,
-            ConcurrentDictionary<ulong, Game> games)
+            ConcurrentDictionary<ulong, EinsGame> games)
         {
             this._logger = logger;
             this._lobbies = lobbies;
@@ -47,9 +47,9 @@ namespace Eins.GameSocket.Hubs
             }
 
             var player = game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
-            var einsPlayer = player.Value as Player;
+            var einsPlayer = player.Value as EinsPlayer;
 
-            var hasCard = await einsPlayer.HasCardAsync((Card)card);
+            var hasCard = await einsPlayer.HasCardAsync((EinsCard)card);
             if (!hasCard)
             {
                 await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(400, "You dont have a card like that"));
@@ -81,9 +81,9 @@ namespace Eins.GameSocket.Hubs
 
             await playerConnections.SendAsync("CardPlayed", playedArgs);
 
-            if (card is ActionCard actionCard)
+            if (card is EinsActionCard actionCard)
             {
-                if (actionCard.Color == Card.CardColor.Black)
+                if (actionCard.Color == EinsCard.CardColor.Black)
                 {
                     game.AwaitingUserInput = true;
 
@@ -105,7 +105,7 @@ namespace Eins.GameSocket.Hubs
             var nextPlayer = await game.SetNextPlayer();
         }
 
-        public async Task DoInteraction(ulong gameID, Card.CardColor color)
+        public async Task DoInteraction(ulong gameID, EinsCard.CardColor color)
         {
             var game = this._games[gameID];
 
@@ -123,7 +123,7 @@ namespace Eins.GameSocket.Hubs
             {
                 Code = 200,
                 NewColor = color,
-                OldColor = Card.CardColor.Black
+                OldColor = EinsCard.CardColor.Black
             };
 
             var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.ConnectionID));
@@ -160,7 +160,7 @@ namespace Eins.GameSocket.Hubs
 
         public async Task HeartBeat()
         {
-            await Task.Delay(10 * 1000);
+            //await Task.Delay(10 * 1000);
             await this.Clients.Caller.SendAsync("Heartbeat");
         }
     }

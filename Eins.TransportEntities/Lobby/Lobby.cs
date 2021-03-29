@@ -9,7 +9,11 @@ namespace Eins.TransportEntities.Lobby
     {
         public ulong ID { get; set; }
         public string Name { get; set; }
+        public string Creator { get; set; }
+        public string Password { get; set; }
         public GeneralSettings GeneralSettings { get; set; }
-        public Dictionary<int, IBasePlayer> Players { get; set; }
+        public IBaseGame Game { get; set; }
+        public object GameRules { get; set; }
+        public Dictionary<int, IBasePlayer> Players { get; set; } = new Dictionary<int, IBasePlayer>();
     }
 }
