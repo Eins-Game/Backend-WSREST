@@ -22,7 +22,7 @@ namespace Eins.GameSocket
         {
             services.AddSignalR();
 
-            services.AddSingleton(new ConcurrentDictionary<ulong, Game>());
+            services.AddSingleton(new ConcurrentDictionary<ulong, EinsGame>());
 
             services.AddSingleton(new ConcurrentDictionary<ulong, Lobby>());
         }
@@ -40,7 +40,7 @@ namespace Eins.GameSocket
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHub<EinsGameHub>("/game");
-                endpoints.MapHub<LobbyTestHub>("/test");
+                endpoints.MapHub<LobbyHub>("/lobby");
             });
         }
     }

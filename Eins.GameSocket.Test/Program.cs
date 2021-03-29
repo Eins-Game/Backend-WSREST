@@ -10,27 +10,17 @@ namespace Eins.GameSocket.Test
 {
     class Program
     {
+
         static async Task Main(string[] args)
         {
-            //await Task.Delay(5000);
-            //var g = new Game(0, new List<Player>(), default);
-            ////g.GetRandomCard();
-            //
-            //var connection = new HubConnectionBuilder()
-            //    .WithUrl("https://localhost:49153/test")
-            //    .Build();
-            //
-            //await connection.StartAsync();
-            //
-            //await connection.SendAsync("CreateLobby", "Test", "TestPW");
-            //
-            //await Task.Delay(2500);
-            //
-            //await connection.SendAsync("GetAllLobbies");
-            //
-            //await Task.Delay(-1);
-
-            Test("Test", x => x.ToUpper());
+            var testObject = new Test()
+            {
+                TestInt = 4,
+                TestString = "Hallo"
+            };
+            var type = testObject.GetType();
+            var propNames = type.GetProperties();
+            await Task.Delay(1);
         }
 
 
@@ -38,5 +28,11 @@ namespace Eins.GameSocket.Test
         {
             Console.WriteLine(predicate.Invoke(test));
         }
+    }
+
+    public class Test
+    {
+        public int TestInt { get; set; }
+        public string TestString { get; set; }
     }
 }

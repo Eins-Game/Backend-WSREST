@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Eins.TransportEntities.Eins
 {
-    public class Game : IBaseGame
+    public class EinsGame : IBaseGame
     {
         #region Properties
         public ulong GameID { get; set; }
@@ -19,27 +19,29 @@ namespace Eins.TransportEntities.Eins
         public Dictionary<int, IBasePlayer> Players { get; set; } = new Dictionary<int, IBasePlayer>();
         public string CurrentPlayer { get; set; } = default;
         public GameStatus Status { get; set; } = GameStatus.NotIntialized;
-        public EinsRules Rules { get; set; }
+        public object GameRules { get; set; }
+        public Type RulesType { get; set; }
         public bool Reversed { get; set; } = false;
 
         #region IO
 
         public bool AwaitingUserInput { get; set; } = false;
-        public Card.CardColor UserInputColor { get; set; } = 0;
+        public EinsCard.CardColor UserInputColor { get; set; } = 0;
 
         #endregion
 
         private Random _rnd { get; set; } = new Random();
         #endregion
 
-        public Game(ulong id, IList<Player> players, EinsRules rules)
+        public EinsGame(ulong id, IList<EinsPlayer> players, object rules)
         {
+            this.RulesType = typeof(EinsRules);
             this.GameID = id;
 
             for (int i = 0; i < players.Count; i++)
                 this.Players.Add(i, players[i]);
 
-            this.Rules = rules;
+            this.GameRules = rules;
         }
 
         public async Task<bool> InitializeGame(Hub hub = default)
@@ -47,7 +49,8 @@ namespace Eins.TransportEntities.Eins
             var strippedPlayers = new List<EventArgs.StrippedEntities.Player>();
             foreach (var player in this.Players)
             {
-                for (int i = 0; i < this.Rules.CardsPerPlayer; i++)
+                var rules = this.GameRules as EinsRules;
+                for (int i = 0; i < rules.CardsPerPlayer; i++)
                 {
                     player.Value.HeldCards.Add(GetRandomCard());
                 }
@@ -114,11 +117,11 @@ namespace Eins.TransportEntities.Eins
         {
             var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
 
-            if (card is ActionCard actionCard)
+            if (card is EinsActionCard actionCard)
             {
                 switch (actionCard.CardType)
                 {
-                    case ActionCard.ActionCardType.Draw2:
+                    case EinsActionCard.ActionCardType.Draw2:
                         await DoPlus2(hub);
 
                         //Basically skip the next player, maybe do it with the SkipCard method later
@@ -126,7 +129,7 @@ namespace Eins.TransportEntities.Eins
                         this.CurrentPlayer = next2.ConnectionID;
                         break;
 
-                    case ActionCard.ActionCardType.Draw4:
+                    case EinsActionCard.ActionCardType.Draw4:
                         card = await DoPlus4(hub, actionCard);
 
                         //Basically skip the next player, maybe do it with the SkipCard method later
@@ -134,15 +137,15 @@ namespace Eins.TransportEntities.Eins
                         this.CurrentPlayer = next4.ConnectionID;
                         break;
 
-                    case ActionCard.ActionCardType.Skip:
+                    case EinsActionCard.ActionCardType.Skip:
                         await DoSkip(hub);
                         break;
 
-                    case ActionCard.ActionCardType.Switch:
+                    case EinsActionCard.ActionCardType.Switch:
                         await DoSwitch(hub);
                         break;
 
-                    case ActionCard.ActionCardType.Wish:
+                    case EinsActionCard.ActionCardType.Wish:
                         card = await DoWish(hub, actionCard);
                         break;
 
@@ -167,20 +170,20 @@ namespace Eins.TransportEntities.Eins
 
         private IBaseCard GetRandomCard()
         {
-            var colors = Enum.GetValues(typeof(Card.CardColor)) as Card.CardColor[];
+            var colors = Enum.GetValues(typeof(EinsCard.CardColor)) as EinsCard.CardColor[];
             var color = colors[this._rnd.Next(0, 5)];
 
-            if (color != Card.CardColor.Black)
-                return new Card(this._rnd.Next(0, 10), color);
+            if (color != EinsCard.CardColor.Black)
+                return new EinsCard(this._rnd.Next(0, 10), color);
 
             else
             {
-                var actions = Enum.GetValues(typeof(ActionCard.ActionCardType)) as ActionCard.ActionCardType[];
-                return new ActionCard(color, actions[this._rnd.Next(0, 5)]);
+                var actions = Enum.GetValues(typeof(EinsActionCard.ActionCardType)) as EinsActionCard.ActionCardType[];
+                return new EinsActionCard(color, actions[this._rnd.Next(0, 5)]);
             }
         }
 
-        private Task<Player> GetNextPlayer()
+        private Task<EinsPlayer> GetNextPlayer()
         {
 
             var currentPlayer = this.Players.First(x => x.Value.ConnectionID == this.CurrentPlayer);
@@ -189,14 +192,14 @@ namespace Eins.TransportEntities.Eins
                 var nextID = currentPlayer.Key - 1;
                 if (nextID == -1)
                     nextID = this.Players.Count - 1;
-                return Task.FromResult(this.Players[nextID] as Player);
+                return Task.FromResult(this.Players[nextID] as EinsPlayer);
             }
             else
             {
                 var nextID = currentPlayer.Key + 1;
                 if (nextID == this.Players.Count)
                     nextID = 0;
-                return Task.FromResult(this.Players[nextID] as Player);
+                return Task.FromResult(this.Players[nextID] as EinsPlayer);
             }
         }
 
@@ -228,7 +231,7 @@ namespace Eins.TransportEntities.Eins
             return true;
         }
 
-        private async Task<ActionCard> DoPlus4(Hub hub, ActionCard card)
+        private async Task<EinsActionCard> DoPlus4(Hub hub, EinsActionCard card)
         {
             var nextPlayer = await GetNextPlayer();
             var newCard1 = GetRandomCard();
@@ -274,7 +277,7 @@ namespace Eins.TransportEntities.Eins
             return card;
         }
 
-        private Task<ActionCard> DoWish(Hub hub, ActionCard card)
+        private Task<EinsActionCard> DoWish(Hub hub, EinsActionCard card)
         {
             card.Color = this.UserInputColor;
             this.UserInputColor = 0;
