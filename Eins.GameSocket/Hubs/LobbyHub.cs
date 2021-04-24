@@ -29,6 +29,7 @@ namespace Eins.GameSocket.Hubs
             this.logger = logger;
             this.lobbies = lobbies;
             this.games = games;
+            this.players = players;
         }
 
         public async Task Authenticate(string userName = default)
