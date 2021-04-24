@@ -1,4 +1,5 @@
-﻿using Eins.TransportEntities.Eins;
+﻿using Eins.TransportEntities;
+using Eins.TransportEntities.Eins;
 using Eins.TransportEntities.EventArgs;
 using Eins.TransportEntities.EventArgs.StrippedEntities;
 using Eins.TransportEntities.Interfaces;
@@ -18,14 +19,59 @@ namespace Eins.GameSocket.Hubs
         private readonly ILogger<LobbyHub> logger;
         private readonly ConcurrentDictionary<ulong, Lobby> lobbies;
         private readonly ConcurrentDictionary<ulong, EinsGame> games;
+        private readonly ConcurrentDictionary<ulong, SessionUser> players;
 
         public LobbyHub(ILogger<LobbyHub> logger,
             ConcurrentDictionary<ulong, Lobby> lobbies,
-            ConcurrentDictionary<ulong, EinsGame> games)
+            ConcurrentDictionary<ulong, EinsGame> games,
+            ConcurrentDictionary<ulong, SessionUser> players)
         {
             this.logger = logger;
             this.lobbies = lobbies;
             this.games = games;
+        }
+
+        public async Task Authenticate(string userName = default)
+        {
+            if (this.players.Any(x => x.Value.LobbyConnectionId == this.Context.ConnectionId))
+                return;
+
+            var secretbase= "´QY:$J%H$AWBCNEURPÜQMCNQ?&)/X(NQ$B)Y%N$)(NaqwertzuioppkhbsaxcvceGQH)=(Y?=YT:§$=JGKAJWEOTPÜwkdfj";
+            var secretArray = secretbase.ToCharArray();
+            string secret = "";
+            var rnd = new Random();
+            for (int i = 0; i < 26; i++)
+            {
+                secret += secretArray[rnd.Next(0, secretArray.Length)];
+            }
+            var sessuser = new SessionUser
+            {
+                LobbyConnectionId = this.Context.ConnectionId,
+                Secret = secret,
+                UserId = Convert.ToUInt64(this.players.Count),
+                UserName = userName
+            };
+            var added = this.players.TryAdd(Convert.ToUInt64(this.players.Count), sessuser);
+            await this.Clients.Caller.SendAsync("Authenticated", 200, new AuthenticatedEventArgs
+            {
+                Code = 200,
+                UserSession = sessuser
+            });
+        }
+
+        public async Task ReAuthenticate(string secret)
+        {
+            var user = this.players.FirstOrDefault(x => x.Value.Secret == secret);
+            if (user.Value == default)
+                return;
+
+            user.Value.LobbyConnectionId = this.Context.ConnectionId;
+
+            await this.Clients.Caller.SendAsync("Authenticated", 200, new AuthenticatedEventArgs
+            {
+                Code = 200,
+                UserSession = user.Value
+            });
         }
 
         public async Task GetAllLobbies()
@@ -38,6 +84,11 @@ namespace Eins.GameSocket.Hubs
         //Falls spieler in in einer lobby -> Exception
         public async Task CreateLobby(string name, string password = default)
         {
+            var firstPlayer = this.players.FirstOrDefault(x => x.Value.LobbyConnectionId == this.Context.ConnectionId);
+            if (firstPlayer.Value == default)
+            {
+                return;
+            }
             var newLobby = new Lobby()
             {
                 GeneralSettings = new GeneralSettings
@@ -46,11 +97,11 @@ namespace Eins.GameSocket.Hubs
                     Password = password
                 },
                 Name = name,
-                Creator = this.Context.ConnectionId,
+                Creator = firstPlayer.Value.LobbyConnectionId,
                 GameRules = new EinsRules()
             };
-            var firstPlayer = new EinsPlayer(0, this.Context.ConnectionId);
-            newLobby.Players.Add(newLobby.Players.Count, firstPlayer);
+            var player = new EinsPlayer(firstPlayer.Value.UserId, firstPlayer.Value);
+            newLobby.Players.Add(newLobby.Players.Count, player);
             this.lobbies.TryAdd(Convert.ToUInt64(this.lobbies.Count), newLobby);
             await this.Clients.Caller.SendAsync("LobbyCreated", 200, new LobbyCreatedEventArgs
             {
@@ -115,7 +166,7 @@ namespace Eins.GameSocket.Hubs
             }
 
             lobby.GeneralSettings = updatedSettings;
-            var lobbyPlayers = lobby.Players.Select(player => player.Value.ConnectionID);
+            var lobbyPlayers = lobby.Players.Select(player => player.Value.UserSession.LobbyConnectionId);
             await this.Clients.AllExcept(lobbyPlayers).SendAsync("LobbyGeneralSettingsUpdated", 200, new LobbyGeneralSettingsUpdatedEventArgs
             {
                 Code = 200,
@@ -128,6 +179,7 @@ namespace Eins.GameSocket.Hubs
                 NewPassword = lobby.GeneralSettings.Password
             });
         }
+
         public async Task ChangeGameModeSettings(ulong id, EinsRules rules)
         {
             if (!this.lobbies.ContainsKey(id))
@@ -144,7 +196,7 @@ namespace Eins.GameSocket.Hubs
             }
 
             lobby.GameRules = rules;
-            var lobbyPlayers = lobby.Players.Select(player => player.Value.ConnectionID);
+            var lobbyPlayers = lobby.Players.Select(player => player.Value.UserSession.LobbyConnectionId);
             await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", 200, new LobbyGameModeSettingsUpdatedEventArgs
             {
                 Code = 100,
@@ -172,7 +224,7 @@ namespace Eins.GameSocket.Hubs
                 Code = 200,
                 Player = new LobbyPlayer
                 {
-                    ConnectionID = player.ConnectionID,
+                    ConnectionID = player.UserSession.LobbyConnectionId,
                     ID = player.ID,
                     Username = player.Username,
                     IsBot = player.IsBot
@@ -189,24 +241,24 @@ namespace Eins.GameSocket.Hubs
             }
 
             var lobby = lobbies[lobbyID];
-            if (!lobby.Players.Any(x => x.Value.ConnectionID == this.Context.ConnectionId))
+            if (!lobby.Players.Any(x => x.Value.UserSession.LobbyConnectionId == this.Context.ConnectionId))
             {
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(400, "Not in that lobby"));
                 return;
             }
-            if (player.ConnectionID != this.Context.ConnectionId)
+            if (player.UserSession.LobbyConnectionId != this.Context.ConnectionId)
             {
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(403, "Cant make other leave"));
                 return;
             }
-            var remove = lobby.Players.First(x => x.Value.ConnectionID == player.ConnectionID);
+            var remove = lobby.Players.First(x => x.Value.UserSession.LobbyConnectionId == player.UserSession.LobbyConnectionId);
             lobby.Players.Remove(remove.Key);
             await this.Clients.All.SendAsync("PlayerLeft", 200, new LobbyPlayerLeftEventArgs
             {
                 Code = 200,
                 Player = new LobbyPlayer
                 {
-                    ConnectionID = player.ConnectionID,
+                    ConnectionID = player.UserSession.LobbyConnectionId,
                     ID = player.ID,
                     Username = player.Username,
                     IsBot = player.IsBot

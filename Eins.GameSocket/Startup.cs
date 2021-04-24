@@ -1,4 +1,5 @@
 using Eins.GameSocket.Hubs;
+using Eins.TransportEntities;
 using Eins.TransportEntities.Eins;
 using Eins.TransportEntities.Lobby;
 using Microsoft.AspNetCore.Builder;
@@ -23,8 +24,8 @@ namespace Eins.GameSocket
             services.AddSignalR();
 
             services.AddSingleton(new ConcurrentDictionary<ulong, EinsGame>());
-
             services.AddSingleton(new ConcurrentDictionary<ulong, Lobby>());
+            services.AddSingleton(new ConcurrentDictionary<ulong, SessionUser>());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

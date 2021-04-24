@@ -56,7 +56,7 @@ namespace Eins.TransportEntities.Eins
                 }
                 var sp = new EventArgs.StrippedEntities.Player
                 {
-                    ConnectionID = player.Value.ConnectionID,
+                    ConnectionID = player.Value.UserSession.GameConnectionId,
                     ID = player.Value.ID,
                     OrderID = player.Key,
                     HeldCardAmount = player.Value.HeldCards.Count,
@@ -73,7 +73,7 @@ namespace Eins.TransportEntities.Eins
                     Players = strippedPlayers,
                     YourCards = item.Value.HeldCards
                 };
-                await hub.Clients.Client(item.Value.ConnectionID)
+                await hub.Clients.Client(item.Value.UserSession.GameConnectionId)
                     .SendAsync("Initialized", initArgs);
             }
             return true;
@@ -81,7 +81,7 @@ namespace Eins.TransportEntities.Eins
 
         public async Task<GameStartedEventArgs> StartGame(Hub hub = default)
         {
-            this.CurrentPlayer = this.Players[0].ConnectionID;
+            this.CurrentPlayer = this.Players[0].UserSession.GameConnectionId;
 
             //TODO: Check card events on intial card
             ((Stack<IBaseCard>)this.CurrentStack).Push(GetRandomCard());
@@ -108,14 +108,14 @@ namespace Eins.TransportEntities.Eins
         public Task<IBaseCard> DrawCard(string playerConnectionID, Hub hub = default)
         {
             var card = GetRandomCard();
-            var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
+            var player = this.Players.First(x => x.Value.UserSession.GameConnectionId == playerConnectionID);
             player.Value.HeldCards.Add(card);
             return Task.FromResult(card);
         }
 
         public async Task<bool> PushCard(string playerConnectionID, IBaseCard card, Hub hub = default)
         {
-            var player = this.Players.First(x => x.Value.ConnectionID == playerConnectionID);
+            var player = this.Players.First(x => x.Value.UserSession.GameConnectionId == playerConnectionID);
 
             if (card is EinsActionCard actionCard)
             {
@@ -126,7 +126,7 @@ namespace Eins.TransportEntities.Eins
 
                         //Basically skip the next player, maybe do it with the SkipCard method later
                         var next2 = await GetNextPlayer();
-                        this.CurrentPlayer = next2.ConnectionID;
+                        this.CurrentPlayer = next2.UserSession.GameConnectionId;
                         break;
 
                     case EinsActionCard.ActionCardType.Draw4:
@@ -134,7 +134,7 @@ namespace Eins.TransportEntities.Eins
 
                         //Basically skip the next player, maybe do it with the SkipCard method later
                         var next4 = await GetNextPlayer();
-                        this.CurrentPlayer = next4.ConnectionID;
+                        this.CurrentPlayer = next4.UserSession.GameConnectionId;
                         break;
 
                     case EinsActionCard.ActionCardType.Skip:
@@ -161,7 +161,7 @@ namespace Eins.TransportEntities.Eins
         public async Task<IBasePlayer> SetNextPlayer(Hub hub = default)
         {
             var next = await GetNextPlayer();
-            this.CurrentPlayer = next.ConnectionID;
+            this.CurrentPlayer = next.UserSession.GameConnectionId;
             return next;
         }
 
@@ -186,7 +186,7 @@ namespace Eins.TransportEntities.Eins
         private Task<EinsPlayer> GetNextPlayer()
         {
 
-            var currentPlayer = this.Players.First(x => x.Value.ConnectionID == this.CurrentPlayer);
+            var currentPlayer = this.Players.First(x => x.Value.UserSession.GameConnectionId == this.CurrentPlayer);
             if (this.Reversed)
             {
                 var nextID = currentPlayer.Key - 1;
@@ -212,10 +212,10 @@ namespace Eins.TransportEntities.Eins
             nextPlayer.HeldCards.Add(newCard2);
 
             var playerConnectionsOthers = hub.Clients.Clients(this.Players
-                .Where(x => x.Value.ConnectionID != nextPlayer.ConnectionID)
-                .Select(x => x.Value.ConnectionID).ToArray());
-            var playerConnectionThem = hub.Clients.Client(nextPlayer.ConnectionID);
-            var nextPlayerOrderID = this.Players.First(x => x.Value.ConnectionID == nextPlayer.ConnectionID);
+                .Where(x => x.Value.UserSession.GameConnectionId != nextPlayer.UserSession.GameConnectionId)
+                .Select(x => x.Value.UserSession.GameConnectionId).ToArray());
+            var playerConnectionThem = hub.Clients.Client(nextPlayer.UserSession.GameConnectionId);
+            var nextPlayerOrderID = this.Players.First(x => x.Value.UserSession.GameConnectionId == nextPlayer.UserSession.GameConnectionId);
 
 
             var drawnArgsOthers1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
@@ -244,10 +244,10 @@ namespace Eins.TransportEntities.Eins
             nextPlayer.HeldCards.Add(newCard4);
 
             var playerConnectionsOthers = hub.Clients.Clients(this.Players
-                .Where(x => x.Value.ConnectionID != nextPlayer.ConnectionID)
-                .Select(x => x.Value.ConnectionID).ToArray());
-            var playerConnectionThem = hub.Clients.Client(nextPlayer.ConnectionID);
-            var nextPlayerOrderID = this.Players.First(x => x.Value.ConnectionID == nextPlayer.ConnectionID);
+                .Where(x => x.Value.UserSession.GameConnectionId != nextPlayer.UserSession.GameConnectionId)
+                .Select(x => x.Value.UserSession.GameConnectionId).ToArray());
+            var playerConnectionThem = hub.Clients.Client(nextPlayer.UserSession.GameConnectionId);
+            var nextPlayerOrderID = this.Players.First(x => x.Value.UserSession.GameConnectionId == nextPlayer.UserSession.GameConnectionId);
 
             var drawnArgsOthers1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key);
             var drawnArgsThem1 = new CardDrawnEventArgs(200, nextPlayer, nextPlayerOrderID.Key, newCard1);
@@ -285,24 +285,24 @@ namespace Eins.TransportEntities.Eins
         }
         private async Task<bool> DoSkip(Hub hub)
         {
-            var playerConnections = hub.Clients.Clients(this.Players.Select(x => x.Value.ConnectionID).ToArray());
+            var playerConnections = hub.Clients.Clients(this.Players.Select(x => x.Value.UserSession.GameConnectionId).ToArray());
 
             var skipped = await GetNextPlayer();
             var skipargs = new SkippedEventArgs
             {
                 Code = 200,
-                SkippedPlayerConnectionID = skipped.ConnectionID,
+                SkippedPlayerConnectionID = skipped.UserSession.GameConnectionId,
                 SkippedPlayerID = skipped.ID,
                 SkippedPlayerUsername = skipped.Username
             };
             await playerConnections.SendAsync("SkippedPlayer", skipargs);
             var next2 = await GetNextPlayer();
-            this.CurrentPlayer = next2.ConnectionID;
+            this.CurrentPlayer = next2.UserSession.GameConnectionId;
             return true;
         }
         private async Task<bool> DoSwitch(Hub hub)
         {
-            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.ConnectionID).ToArray());
+            var playerConnections = hub.Clients.Clients(Players.Select(x => x.Value.UserSession.GameConnectionId).ToArray());
 
             this.Reversed = !this.Reversed;
 
@@ -310,7 +310,7 @@ namespace Eins.TransportEntities.Eins
             var switchargs = new SwitchedEventArgs
             {
                 Code = 200,
-                NextPlayerConnectionID = next.ConnectionID,
+                NextPlayerConnectionID = next.UserSession.GameConnectionId,
                 NextPlayerID = next.ID,
                 NextPlayerUsername = next.Username
             };

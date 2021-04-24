@@ -46,7 +46,7 @@ namespace Eins.GameSocket.Hubs
                 return;
             }
 
-            var player = game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
+            var player = game.Players.First(x => x.Value.UserSession.GameConnectionId == this.Context.ConnectionId);
             var einsPlayer = player.Value as EinsPlayer;
 
             var hasCard = await einsPlayer.HasCardAsync((EinsCard)card);
@@ -55,7 +55,7 @@ namespace Eins.GameSocket.Hubs
                 await this.Clients.Caller.SendAsync("GameException", new ExceptionEventArgs(400, "You dont have a card like that"));
                 return;
             }
-            var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.ConnectionID));
+            var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.UserSession.GameConnectionId));
 
             var topCard = await game.GetTopCardAsync();
             var validCard = await card.IsPlayable(topCard);
@@ -72,7 +72,7 @@ namespace Eins.GameSocket.Hubs
                 ByPlayer = new TransportEntities.EventArgs.StrippedEntities.Player
                 {
                     HeldCardAmount = player.Value.HeldCards.Count,
-                    ConnectionID = player.Value.ConnectionID,
+                    ConnectionID = player.Value.UserSession.GameConnectionId,
                     ID = player.Value.ID,
                     OrderID = player.Key,
                     Username = player.Value.Username
@@ -126,7 +126,7 @@ namespace Eins.GameSocket.Hubs
                 OldColor = EinsCard.CardColor.Black
             };
 
-            var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.ConnectionID));
+            var playerConnections = this.Clients.Clients(game.Players.Select(x => x.Value.UserSession.GameConnectionId));
             await playerConnections.SendAsync("CardColorChanged", colorChangeArgs);
 
             game.AwaitingUserInput = false;
@@ -135,7 +135,7 @@ namespace Eins.GameSocket.Hubs
         public async Task DrawCard(ulong gameID)
         {
             var game = this._games[gameID];
-            var player = game.Players.First(x => x.Value.ConnectionID == this.Context.ConnectionId);
+            var player = game.Players.First(x => x.Value.UserSession.GameConnectionId == this.Context.ConnectionId);
 
             var canDraw = await game.CanPlayAsync(this.Context.ConnectionId);
             if (!canDraw)
@@ -144,14 +144,14 @@ namespace Eins.GameSocket.Hubs
                 return;
             }
 
-            var card = await game.DrawCard(player.Value.ConnectionID);
+            var card = await game.DrawCard(player.Value.UserSession.GameConnectionId);
 
             var drawnArgsOthers = new CardDrawnEventArgs(200, player.Value, player.Key);
             var drawnArgsThem = new CardDrawnEventArgs(200, player.Value, player.Key, card);
 
             var playerConnectionsOthers = this.Clients.Clients(game.Players
-                .Where(x => x.Value.ConnectionID != this.Context.ConnectionId)
-                .Select(x => x.Value.ConnectionID));
+                .Where(x => x.Value.UserSession.GameConnectionId != this.Context.ConnectionId)
+                .Select(x => x.Value.UserSession.GameConnectionId));
 
             await playerConnectionsOthers.SendAsync("CardDrawn", drawnArgsOthers);
             await this.Clients.Caller.SendAsync("CardDrawn", drawnArgsThem);

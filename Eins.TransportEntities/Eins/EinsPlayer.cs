@@ -10,15 +10,15 @@ namespace Eins.TransportEntities.Eins
     public class EinsPlayer : IBasePlayer
     {
         public ulong ID { get; set; }
-        public string ConnectionID { get; set; }
         public string Username { get; set; }
         public bool IsBot { get; set; } = false;
+        public SessionUser UserSession { get; set; }
         public List<IBaseCard> HeldCards { get; set; } = new List<IBaseCard>();
 
-        public EinsPlayer(ulong id, string connectionID, string userName = default, bool isBot = false)
+        public EinsPlayer(ulong id, SessionUser userSession, string userName = default, bool isBot = false)
         {
             this.ID = id;
-            this.ConnectionID = connectionID;
+            this.UserSession = userSession;
 
             if (userName == default)
                 this.Username = userName;
