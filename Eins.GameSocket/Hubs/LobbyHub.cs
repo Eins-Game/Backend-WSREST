@@ -180,7 +180,6 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
-        //EventArgs für "PlayerLeft", am besten mit den meisten infos aus dem "player" Parameter
         public async Task PlayerLeft(ulong lobbyID, IBasePlayer player)
         {
             if (!this.lobbies.ContainsKey(lobbyID))
@@ -237,5 +236,10 @@ namespace Eins.GameSocket.Hubs
         //    await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", "max spieler anzahl mit PW");
         //}
 
+        public async Task HeartBeat()
+        {
+            await Task.Delay(10 * 1000);
+            await this.Clients.Caller.SendAsync("Ack");
+        }
     }
 }
