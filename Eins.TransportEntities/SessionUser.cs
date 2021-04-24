@@ -10,6 +10,6 @@ namespace Eins.TransportEntities
         public string UserName { get; set; }
         public string LobbyConnectionId { get; set; }
         public string GameConnectionId { get; set; }
-        public string Secret { get; set; }
+        public Guid Secret { get; set; }
     }
 }

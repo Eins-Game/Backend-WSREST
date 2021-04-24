@@ -37,18 +37,10 @@ namespace Eins.GameSocket.Hubs
             if (this.players.Any(x => x.Value.LobbyConnectionId == this.Context.ConnectionId))
                 return;
 
-            var secretbase= "´QY:$J%H$AWBCNEURPÜQMCNQ?&)/X(NQ$B)Y%N$)(NaqwertzuioppkhbsaxcvceGQH)=(Y?=YT:§$=JGKAJWEOTPÜwkdfj";
-            var secretArray = secretbase.ToCharArray();
-            string secret = "";
-            var rnd = new Random();
-            for (int i = 0; i < 26; i++)
-            {
-                secret += secretArray[rnd.Next(0, secretArray.Length)];
-            }
             var sessuser = new SessionUser
             {
                 LobbyConnectionId = this.Context.ConnectionId,
-                Secret = secret,
+                Secret = Guid.NewGuid(),
                 UserId = Convert.ToUInt64(this.players.Count),
                 UserName = userName
             };
@@ -60,7 +52,7 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
-        public async Task ReAuthenticate(string secret)
+        public async Task ReAuthenticate(Guid secret)
         {
             var user = this.players.FirstOrDefault(x => x.Value.Secret == secret);
             if (user.Value == default)
