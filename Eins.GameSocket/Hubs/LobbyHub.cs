@@ -1,5 +1,6 @@
 ﻿using Eins.TransportEntities.Eins;
 using Eins.TransportEntities.EventArgs;
+using Eins.TransportEntities.EventArgs.StrippedEntities;
 using Eins.TransportEntities.Interfaces;
 using Eins.TransportEntities.Lobby;
 using Microsoft.AspNetCore.SignalR;
@@ -35,7 +36,6 @@ namespace Eins.GameSocket.Hubs
         }
 
         //Falls spieler in in einer lobby -> Exception
-        //LobbyCreatedEvents erstellen und einfügen, jeweils mit und ohne Passwort
         public async Task CreateLobby(string name, string password = default)
         {
             var newLobby = new Lobby()
@@ -52,11 +52,29 @@ namespace Eins.GameSocket.Hubs
             var firstPlayer = new EinsPlayer(0, this.Context.ConnectionId);
             newLobby.Players.Add(newLobby.Players.Count, firstPlayer);
             this.lobbies.TryAdd(Convert.ToUInt64(this.lobbies.Count), newLobby);
-            await this.Clients.Caller.SendAsync("LobbyCreated", "Lobby stuff mit PW");
-            await this.Clients.Others.SendAsync("LobbyCreated", "Lobby stuff ohne PW");
+            await this.Clients.Caller.SendAsync("LobbyCreated", 200, new LobbyCreatedEventArgs
+            {
+                Code = 200,
+                Creator = newLobby.Creator,
+                GameMode = newLobby.Game?.GetType().Name,
+                LobbyId = newLobby.ID,
+                MaxPlayers = newLobby.GeneralSettings.MaxPlayers,
+                Name = newLobby.Name,
+                Password = newLobby.GeneralSettings.Password,
+                PlayerCount = newLobby.Players.Count
+            });
+            await this.Clients.Others.SendAsync("LobbyCreated", 200, new LobbyCreatedEventArgs
+            {
+                Code = 200,
+                Creator = newLobby.Creator,
+                GameMode = newLobby.Game?.GetType().Name,
+                LobbyId = newLobby.ID,
+                MaxPlayers = newLobby.GeneralSettings.MaxPlayers,
+                Name = newLobby.Name,
+                PlayerCount = newLobby.Players.Count
+            });
         }
 
-        //EventArgs objekt für "LobbyRemoved" erstellen und einfügen
         public async Task RemoveLobby(ulong id)
         {
             if (!this.lobbies.ContainsKey(id))
@@ -72,11 +90,15 @@ namespace Eins.GameSocket.Hubs
                 return;
             }
 
-            this.lobbies.Remove(id, out _);
-            await this.Clients.All.SendAsync("LobbyRemoved", "ID der lobby");
+            this.lobbies.Remove(id, out var removed);
+            await this.Clients.All.SendAsync("LobbyRemoved", 200, new LobbyRemovedEventArgs
+            {
+                Code = 200,
+                LobbyId = removed.ID,
+                LobbyName = removed.Name
+            });
         }
 
-        //EventArgs erstellen "LobbyGeneralSettingsUpdated" erstellen, 2 mal, jeweils mit und ohne Passwort
         public async Task ChangeLobbyGeneralSettings(ulong id, GeneralSettings updatedSettings)
         {
             if (!this.lobbies.ContainsKey(id))
@@ -94,11 +116,18 @@ namespace Eins.GameSocket.Hubs
 
             lobby.GeneralSettings = updatedSettings;
             var lobbyPlayers = lobby.Players.Select(player => player.Value.ConnectionID);
-            await this.Clients.AllExcept(lobbyPlayers).SendAsync("LobbyGeneralSettingsUpdated", "max spieler anzahl ohne PW");
-            await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGeneralSettingsUpdated", "max spieler anzahl mit PW");
+            await this.Clients.AllExcept(lobbyPlayers).SendAsync("LobbyGeneralSettingsUpdated", 200, new LobbyGeneralSettingsUpdatedEventArgs
+            {
+                Code = 200,
+                NewMaxPlayerCount = lobby.GeneralSettings.MaxPlayers
+            });
+            await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGeneralSettingsUpdated", 200, new LobbyGeneralSettingsUpdatedEventArgs
+            {
+                Code = 200,
+                NewMaxPlayerCount = lobby.GeneralSettings.MaxPlayers,
+                NewPassword = lobby.GeneralSettings.Password
+            });
         }
-
-        //Eventargs erstellen für "LobbyGameModeSettingsUpdated" 
         public async Task ChangeGameModeSettings(ulong id, EinsRules rules)
         {
             if (!this.lobbies.ContainsKey(id))
@@ -116,10 +145,13 @@ namespace Eins.GameSocket.Hubs
 
             lobby.GameRules = rules;
             var lobbyPlayers = lobby.Players.Select(player => player.Value.ConnectionID);
-            await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", "game pode settings properties");
+            await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", 200, new LobbyGameModeSettingsUpdatedEventArgs
+            {
+                Code = 100,
+                GameRules = rules
+            });
         }
 
-        //EventArgs für "PlayerJoined", am besten mit den meisten infos aus dem "player" Parameter
         public async Task PlayerJoin(ulong lobbyID, IBasePlayer player, string password)
         {
             if (!this.lobbies.ContainsKey(lobbyID))
@@ -135,7 +167,17 @@ namespace Eins.GameSocket.Hubs
                 return;
             }
             lobby.Players.Add(lobby.Players.Count, player);
-            await this.Clients.All.SendAsync("PlayerJoined", "player info bzw. IBasePlayer");
+            await this.Clients.All.SendAsync("PlayerJoined", 200, new LobbyPlayerJoinedEventArgs
+            {
+                Code = 200,
+                Player = new LobbyPlayer
+                {
+                    ConnectionID = player.ConnectionID,
+                    ID = player.ID,
+                    Username = player.Username,
+                    IsBot = player.IsBot
+                }
+            });
         }
 
         //EventArgs für "PlayerLeft", am besten mit den meisten infos aus dem "player" Parameter
@@ -160,7 +202,17 @@ namespace Eins.GameSocket.Hubs
             }
             var remove = lobby.Players.First(x => x.Value.ConnectionID == player.ConnectionID);
             lobby.Players.Remove(remove.Key);
-            await this.Clients.All.SendAsync("PlayerLeft", "player info bzw. IBasePlayer");
+            await this.Clients.All.SendAsync("PlayerLeft", 200, new LobbyPlayerLeftEventArgs
+            {
+                Code = 200,
+                Player = new LobbyPlayer
+                {
+                    ConnectionID = player.ConnectionID,
+                    ID = player.ID,
+                    Username = player.Username,
+                    IsBot = player.IsBot
+                }
+            });
         }
 
         //Gegebenenfalls Methode zum kicken von Spielern
