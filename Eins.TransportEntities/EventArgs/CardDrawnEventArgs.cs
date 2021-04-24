@@ -19,7 +19,7 @@ namespace Eins.TransportEntities.EventArgs
             this.Player = new Player
             {
                 HeldCardAmount = player.HeldCards.Count,
-                ConnectionID = player.ConnectionID,
+                ConnectionID = player.UserSession.GameConnectionId,
                 ID = player.ID,
                 OrderID = orderID,
                 Username = player.Username
