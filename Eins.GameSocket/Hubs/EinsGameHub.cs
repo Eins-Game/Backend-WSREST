@@ -1,4 +1,5 @@
-﻿using Eins.TransportEntities.Eins;
+﻿using Eins.TransportEntities;
+using Eins.TransportEntities.Eins;
 using Eins.TransportEntities.EventArgs;
 using Eins.TransportEntities.Interfaces;
 using Eins.TransportEntities.Lobby;
@@ -17,21 +18,66 @@ namespace Eins.GameSocket.Hubs
         private readonly ILogger<EinsGameHub> _logger;
         private readonly ConcurrentDictionary<ulong, Lobby> _lobbies;
         private readonly ConcurrentDictionary<ulong, EinsGame> _games;
+        private readonly ConcurrentDictionary<ulong, SessionUser> _players;
         Random _r = new Random();
 
         public EinsGameHub(ILogger<EinsGameHub> logger, 
             ConcurrentDictionary<ulong, Lobby> lobbies,
-            ConcurrentDictionary<ulong, EinsGame> games)
+            ConcurrentDictionary<ulong, EinsGame> games,
+            ConcurrentDictionary<ulong, SessionUser> players)
         {
             this._logger = logger;
             this._lobbies = lobbies;
             this._games = games;
+            this._players = players;
         }
 
-        public async Task JoinGame()
+        public async Task Authenticate(string lobbyConnectionID)
         {
-            await Task.Delay(0);
-            //When Lobby done
+            if (this._players.Any(x => x.Value.LobbyConnectionId != lobbyConnectionID))
+                return;
+
+            var player = this._players.First(x => x.Value.LobbyConnectionId == lobbyConnectionID);
+            player.Value.GameConnectionId = this.Context.ConnectionId;
+
+            await this.Clients.Caller.SendAsync("GamHubAuthenticated", 200, new AuthenticatedEventArgs
+            {
+                Code = 200,
+                UserSession = player.Value
+            });
+        }
+
+        public async Task ReAuthenticate(Guid secret)
+        {
+            var user = this._players.FirstOrDefault(x => x.Value.Secret == secret);
+            if (user.Value == default)
+                return;
+
+            user.Value.GameConnectionId = this.Context.ConnectionId;
+
+            await this.Clients.Caller.SendAsync("Authenticated", 200, new AuthenticatedEventArgs
+            {
+                Code = 200,
+                UserSession = user.Value
+            });
+        }
+
+        public async Task JoinGame(ulong lobbyID)
+        {
+            if (this._lobbies[lobbyID].Game == default)
+                return; //No Game started lol
+            var game = this._lobbies[lobbyID];
+            var pl = game.Game.Players.First(x => x.Value.UserSession.GameConnectionId == this.Context.ConnectionId);
+            pl.Value.IsReady = true;
+            await this.Clients.Caller.SendAsync("GameJoined", 200, new GameJoinedEventArgs
+            {
+                Code = 200,
+                Player = pl.Value
+            });
+            if (game.Game.Players.All(x => x.Value.IsReady))
+            {
+                await game.Game.StartGame(this);
+            }
         }
 
         //Validate playbility on client, but also validated here just in case
@@ -158,10 +204,39 @@ namespace Eins.GameSocket.Hubs
 
         }
 
-        public async Task HeartBeat()
+        public override Task OnDisconnectedAsync(Exception exception)
+        {
+            if (!this._players.Any(x => this.Context.ConnectionId == x.Value.LobbyConnectionId))
+                return base.OnDisconnectedAsync(exception);
+
+            var pl = this._players.First(x => this.Context.ConnectionId == x.Value.LobbyConnectionId);
+            _ = Task.Run(() => WaitForReconnect(pl.Key));
+            return base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task Heartbeat()
         {
             await Task.Delay(10 * 1000);
             await this.Clients.Caller.SendAsync("Ack");
+        }
+
+        public async Task WaitForReconnect(ulong playerID)
+        {
+            string lastConID = this._players[playerID].GameConnectionId;
+            await Task.Delay(3 * 60 * 1000);
+            if (this._players[playerID].GameConnectionId == lastConID)
+            {
+                this._players.Remove(playerID, out _);
+                if (!this._games.Any(x => x.Value.Players.Any(x => x.Value.ID == playerID)))
+                    return;
+                var game = this._games.First(x => x.Value.Players.Any(x => x.Value.ID == playerID));
+                if (game.Value.CurrentPlayer == lastConID)
+                {
+                    await game.Value.SetNextPlayer(this);
+                }
+                var gamePl = game.Value.Players.First(x => x.Value.ID == playerID);
+                game.Value.Players.Remove(gamePl.Key);
+            }
         }
     }
 }

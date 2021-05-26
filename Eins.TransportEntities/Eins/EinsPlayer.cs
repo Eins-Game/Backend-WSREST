@@ -12,6 +12,7 @@ namespace Eins.TransportEntities.Eins
         public ulong ID { get; set; }
         public string Username { get; set; }
         public bool IsBot { get; set; } = false;
+        public bool IsReady { get; set; } = false;
         public SessionUser UserSession { get; set; }
         public List<IBaseCard> HeldCards { get; set; } = new List<IBaseCard>();
 

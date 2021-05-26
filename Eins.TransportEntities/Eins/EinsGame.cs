@@ -183,7 +183,7 @@ namespace Eins.TransportEntities.Eins
             }
         }
 
-        private Task<EinsPlayer> GetNextPlayer()
+        public Task<EinsPlayer> GetNextPlayer()
         {
 
             var currentPlayer = this.Players.First(x => x.Value.UserSession.GameConnectionId == this.CurrentPlayer);

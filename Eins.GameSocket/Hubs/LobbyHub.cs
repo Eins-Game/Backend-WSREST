@@ -71,7 +71,7 @@ namespace Eins.GameSocket.Hubs
         {
             await Task.Delay(0);
             var lobiesAsList = lobbies.ToList();
-
+            await this.Clients.Caller.SendAsync("AllLobbies", 200, lobiesAsList);
         }
 
         //Falls spieler in in einer lobby -> Exception
@@ -91,7 +91,8 @@ namespace Eins.GameSocket.Hubs
                 },
                 Name = name,
                 Creator = firstPlayer.Value.LobbyConnectionId,
-                GameRules = new EinsRules()
+                GameRules = new EinsRules(),
+                ID = Convert.ToUInt64(this.lobbies.Count)
             };
             var player = new EinsPlayer(firstPlayer.Value.UserId, firstPlayer.Value);
             newLobby.Players.Add(newLobby.Players.Count, player);
@@ -259,6 +260,26 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
+        public async Task CreateGame(ulong lobbyID)
+        {
+            var callerID = this.Context.ConnectionId;
+            if (!lobbies.Any(x => x.Value.Creator == callerID))
+            {
+                return; //Not lobby host
+            }
+            var lobby = lobbies.First(x => x.Value.Creator == callerID);
+            lobby.Value.Game = new EinsGame(lobbyID, lobby.Value.Players.Select(x => (EinsPlayer)x.Value).ToList(), lobby.Value.GameRules);
+            await lobby.Value.Game.InitializeGame(this);
+            await this.Clients
+                .Clients(lobby.Value.Players.Select(x => x.Value.UserSession.LobbyConnectionId).ToList())
+                .SendAsync("LobbyGameCreated", 200, new LobbyGameCreatedEventArgs
+                {
+                    Code = 200,
+                    Message = "Success lol"
+                });
+
+        }
+
         //Gegebenenfalls Methode zum kicken von Spielern
 
         //public async Task ChangeGameMode(ulong id, )
@@ -281,10 +302,34 @@ namespace Eins.GameSocket.Hubs
         //    await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", "max spieler anzahl mit PW");
         //}
 
-        public async Task HeartBeat()
+        public override Task OnDisconnectedAsync(Exception exception)
+        {
+            if (!this.players.Any(x => this.Context.ConnectionId == x.Value.LobbyConnectionId))
+                return base.OnDisconnectedAsync(exception);
+            
+            var pl = this.players.First(x => this.Context.ConnectionId == x.Value.LobbyConnectionId);
+            _ = Task.Run(() => WaitForReconnect(pl.Key));
+            return base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task Heartbeat()
         {
             await Task.Delay(10 * 1000);
             await this.Clients.Caller.SendAsync("Ack");
+        }
+
+        public async Task WaitForReconnect(ulong playerID)
+        {
+            string lastConID = this.players[playerID].LobbyConnectionId;
+            await Task.Delay(3 * 60 * 1000);
+            if (this.players[playerID].LobbyConnectionId == lastConID)
+            {
+                this.players.Remove(playerID, out _);
+                if (!this.lobbies.Any(x => x.Value.Players.Any(x => x.Value.ID == playerID)))
+                    return;
+                var lobby = this.lobbies.First(x => x.Value.Players.Any(x => x.Value.ID == playerID));
+                await PlayerLeft(lobby.Key, lobby.Value.Players.First(x => x.Value.ID == playerID).Value);
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Eins.TransportEntities.Interfaces
         public SessionUser UserSession { get; set; }
         public string Username { get; set; }
         public bool IsBot { get; set; }
+        public bool IsReady { get; set; }
         public List<IBaseCard> HeldCards { get; set; }
     }
 }
