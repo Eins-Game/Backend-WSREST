@@ -52,12 +52,13 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
-        public async Task ReAuthenticate(Guid secret)
+        public async Task ReAuthenticate(Guid secret, string newUserName = default)
         {
             var user = this.players.FirstOrDefault(x => x.Value.Secret == secret);
             if (user.Value == default)
                 return;
-
+            if (newUserName != default)
+                user.Value.UserName = newUserName;
             user.Value.LobbyConnectionId = this.Context.ConnectionId;
 
             await this.Clients.Caller.SendAsync("Authenticated", 200, new AuthenticatedEventArgs
@@ -198,7 +199,7 @@ namespace Eins.GameSocket.Hubs
             });
         }
 
-        public async Task PlayerJoin(ulong lobbyID, IBasePlayer player, string password)
+        public async Task PlayerJoin(ulong lobbyID, string password)
         {
             if (!this.lobbies.ContainsKey(lobbyID))
             {
@@ -212,21 +213,22 @@ namespace Eins.GameSocket.Hubs
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(401, "Invalid Password"));
                 return;
             }
-            lobby.Players.Add(lobby.Players.Count, player);
+            var player = this.players.First(x => x.Value.LobbyConnectionId == this.Context.ConnectionId).Value;
+            lobby.Players.Add(lobby.Players.Count, new EinsPlayer(player.UserId, player, player.UserName, false));
             await this.Clients.All.SendAsync("PlayerJoined", 200, new LobbyPlayerJoinedEventArgs
             {
                 Code = 200,
                 Player = new LobbyPlayer
                 {
-                    ConnectionID = player.UserSession.LobbyConnectionId,
-                    ID = player.ID,
-                    Username = player.Username,
-                    IsBot = player.IsBot
+                    ConnectionID = player.LobbyConnectionId,
+                    ID = player.UserId,
+                    Username = player.UserName,
+                    IsBot = false
                 }
             });
         }
 
-        public async Task PlayerLeft(ulong lobbyID, IBasePlayer player)
+        public async Task PlayerLeft(ulong lobbyID)
         {
             if (!this.lobbies.ContainsKey(lobbyID))
             {
@@ -240,24 +242,45 @@ namespace Eins.GameSocket.Hubs
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(400, "Not in that lobby"));
                 return;
             }
-            if (player.UserSession.LobbyConnectionId != this.Context.ConnectionId)
+            var player = this.players.First(x => x.Value.LobbyConnectionId == this.Context.ConnectionId).Value;
+            if (player.LobbyConnectionId != this.Context.ConnectionId)
             {
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(403, "Cant make other leave"));
                 return;
             }
-            var remove = lobby.Players.First(x => x.Value.UserSession.LobbyConnectionId == player.UserSession.LobbyConnectionId);
+            var remove = lobby.Players.First(x => x.Value.UserSession.LobbyConnectionId == player.LobbyConnectionId);
             lobby.Players.Remove(remove.Key);
             await this.Clients.All.SendAsync("PlayerLeft", 200, new LobbyPlayerLeftEventArgs
             {
                 Code = 200,
                 Player = new LobbyPlayer
                 {
-                    ConnectionID = player.UserSession.LobbyConnectionId,
-                    ID = player.ID,
-                    Username = player.Username,
-                    IsBot = player.IsBot
+                    ConnectionID = player.LobbyConnectionId,
+                    ID = player.UserId,
+                    Username = player.UserName,
+                    IsBot = false
                 }
             });
+            if (lobby.Players.Count == 0)
+                await this.RemoveLobby(lobby.ID);
+            else
+            {
+                if (this.Context.ConnectionId == lobby.Creator)
+                {
+                    lobby.Creator = lobby.Players.First(x => !x.Value.IsBot).Value.UserSession.LobbyConnectionId;
+                    await this.Clients.All.SendAsync("PlayerPromoted", 200, new LobbyPlayerPromotedEventArgs
+                    {
+                        Code = 200,
+                        PromotedPlayer = new LobbyPlayer
+                        {
+                            ConnectionID = lobby.Players.First(x => !x.Value.IsBot).Value.UserSession.LobbyConnectionId,
+                            ID = lobby.Players.First(x => !x.Value.IsBot).Value.ID,
+                            Username = lobby.Players.First(x => !x.Value.IsBot).Value.Username,
+                            IsBot = lobby.Players.First(x => !x.Value.IsBot).Value.IsBot
+                        }
+                    });
+                }
+            }
         }
 
         public async Task CreateGame(ulong lobbyID)
@@ -302,14 +325,27 @@ namespace Eins.GameSocket.Hubs
         //    await this.Clients.Clients(lobbyPlayers).SendAsync("LobbyGameModeSettingsUpdated", "max spieler anzahl mit PW");
         //}
 
-        public override Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception exception)
         {
             if (!this.players.Any(x => this.Context.ConnectionId == x.Value.LobbyConnectionId))
-                return base.OnDisconnectedAsync(exception);
+                await base.OnDisconnectedAsync(exception);
             
             var pl = this.players.First(x => this.Context.ConnectionId == x.Value.LobbyConnectionId);
-            _ = Task.Run(() => WaitForReconnect(pl.Key));
-            return base.OnDisconnectedAsync(exception);
+            if (exception != null )
+                _ = Task.Run(() => WaitForReconnect(pl.Key));
+            else
+            {
+                this.players.Remove(pl.Key, out _);
+                if (!this.lobbies.Any(x => x.Value.Players.Any(x => x.Value.ID == pl.Key)))
+                {
+                    await base.OnDisconnectedAsync(exception);
+                    return;
+                }
+
+                var lobby = this.lobbies.First(x => x.Value.Players.Any(x => x.Value.ID == pl.Key));
+                await PlayerLeft(lobby.Key);
+            }
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task Heartbeat()
@@ -328,7 +364,7 @@ namespace Eins.GameSocket.Hubs
                 if (!this.lobbies.Any(x => x.Value.Players.Any(x => x.Value.ID == playerID)))
                     return;
                 var lobby = this.lobbies.First(x => x.Value.Players.Any(x => x.Value.ID == playerID));
-                await PlayerLeft(lobby.Key, lobby.Value.Players.First(x => x.Value.ID == playerID).Value);
+                await PlayerLeft(lobby.Key);
             }
         }
     }
