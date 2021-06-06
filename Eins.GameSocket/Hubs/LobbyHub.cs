@@ -102,7 +102,7 @@ namespace Eins.GameSocket.Hubs
             {
                 Code = 200,
                 Creator = newLobby.Creator,
-                GameMode = newLobby.Game?.GetType().Name,
+                GameMode = newLobby.GameRules?.GetType().Name,
                 LobbyId = newLobby.ID,
                 MaxPlayers = newLobby.GeneralSettings.MaxPlayers,
                 Name = newLobby.Name,
@@ -113,7 +113,7 @@ namespace Eins.GameSocket.Hubs
             {
                 Code = 200,
                 Creator = newLobby.Creator,
-                GameMode = newLobby.Game?.GetType().Name,
+                GameMode = newLobby.GameRules?.GetType().Name,
                 LobbyId = newLobby.ID,
                 MaxPlayers = newLobby.GeneralSettings.MaxPlayers,
                 Name = newLobby.Name,
@@ -130,13 +130,14 @@ namespace Eins.GameSocket.Hubs
             }
 
             var lobby = lobbies[id];
-            if (this.Context.ConnectionId == lobby.Creator)
+            if (this.Context.ConnectionId != lobby.Creator)
             {
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(401, "Not the lobby creator"));
                 return;
             }
 
             this.lobbies.Remove(id, out var removed);
+            this.games.TryRemove(id, out _);
             await this.Clients.All.SendAsync("LobbyRemoved", 200, new LobbyRemovedEventArgs
             {
                 Code = 200,
@@ -184,7 +185,7 @@ namespace Eins.GameSocket.Hubs
             }
 
             var lobby = lobbies[id];
-            if (this.Context.ConnectionId == lobby.Creator)
+            if (this.Context.ConnectionId != lobby.Creator)
             {
                 await this.Clients.Caller.SendAsync("LobbyException", new ExceptionEventArgs(401, "Not the lobby creator"));
                 return;
@@ -291,7 +292,9 @@ namespace Eins.GameSocket.Hubs
                 return; //Not lobby host
             }
             var lobby = lobbies.First(x => x.Value.Creator == callerID);
-            lobby.Value.Game = new EinsGame(lobbyID, lobby.Value.Players.Select(x => (EinsPlayer)x.Value).ToList(), lobby.Value.GameRules);
+            var game = new EinsGame(lobbyID, lobby.Value.Players.Select(x => (EinsPlayer)x.Value).ToList(), lobby.Value.GameRules);
+            lobby.Value.Game = game;
+            this.games.TryAdd(lobby.Key, game);
             await lobby.Value.Game.InitializeGame(this);
             await this.Clients
                 .Clients(lobby.Value.Players.Select(x => x.Value.UserSession.LobbyConnectionId).ToList())
@@ -335,15 +338,16 @@ namespace Eins.GameSocket.Hubs
                 _ = Task.Run(() => WaitForReconnect(pl.Key));
             else
             {
-                this.players.Remove(pl.Key, out _);
                 if (!this.lobbies.Any(x => x.Value.Players.Any(x => x.Value.ID == pl.Key)))
                 {
+                    this.players.Remove(pl.Key, out _);
                     await base.OnDisconnectedAsync(exception);
                     return;
                 }
 
                 var lobby = this.lobbies.First(x => x.Value.Players.Any(x => x.Value.ID == pl.Key));
                 await PlayerLeft(lobby.Key);
+                this.players.Remove(pl.Key, out _);
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -360,11 +364,15 @@ namespace Eins.GameSocket.Hubs
             await Task.Delay(3 * 60 * 1000);
             if (this.players[playerID].LobbyConnectionId == lastConID)
             {
-                this.players.Remove(playerID, out _);
                 if (!this.lobbies.Any(x => x.Value.Players.Any(x => x.Value.ID == playerID)))
+                {
+                    this.players.Remove(playerID, out _);
                     return;
+                }
+
                 var lobby = this.lobbies.First(x => x.Value.Players.Any(x => x.Value.ID == playerID));
                 await PlayerLeft(lobby.Key);
+                this.players.Remove(playerID, out _);
             }
         }
     }

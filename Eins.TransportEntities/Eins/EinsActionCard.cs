@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Eins.TransportEntities.Eins
@@ -12,6 +13,8 @@ namespace Eins.TransportEntities.Eins
         {
             this.CardType = action;
         }
+        public EinsActionCard()
+        {}
 
         public enum ActionCardType
         {

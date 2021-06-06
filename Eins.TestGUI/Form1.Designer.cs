@@ -171,6 +171,7 @@ namespace Eins.TestGUI
             this.lobbyCreateGame.TabIndex = 16;
             this.lobbyCreateGame.Text = "lobbyCreateGame";
             this.lobbyCreateGame.UseVisualStyleBackColor = true;
+            this.lobbyCreateGame.Click += new System.EventHandler(this.lobbyCreateGame_Click);
             // 
             // lobbyPlayerLeftLobbyId
             // 
@@ -187,6 +188,7 @@ namespace Eins.TestGUI
             this.lobbyPlayerLeft.TabIndex = 14;
             this.lobbyPlayerLeft.Text = "lobbyPlayerLeft";
             this.lobbyPlayerLeft.UseVisualStyleBackColor = true;
+            this.lobbyPlayerLeft.Click += new System.EventHandler(this.lobbyPlayerLeft_Click);
             // 
             // lobbyPlayerJoinPassword
             // 
@@ -210,6 +212,7 @@ namespace Eins.TestGUI
             this.lobbyPlayerJoin.TabIndex = 11;
             this.lobbyPlayerJoin.Text = "lobbyPlayerJoin";
             this.lobbyPlayerJoin.UseVisualStyleBackColor = true;
+            this.lobbyPlayerJoin.Click += new System.EventHandler(this.lobbyPlayerJoin_Click);
             // 
             // lobbyChangeGameModeSettings
             // 
@@ -244,6 +247,7 @@ namespace Eins.TestGUI
             this.lobbyRemoveLobby.TabIndex = 7;
             this.lobbyRemoveLobby.Text = "lobbyRemoveLobby";
             this.lobbyRemoveLobby.UseVisualStyleBackColor = true;
+            this.lobbyRemoveLobby.Click += new System.EventHandler(this.lobbyRemoveLobby_Click);
             // 
             // lobbyCreateLobbyPassword
             // 

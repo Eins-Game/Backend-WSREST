@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Eins.TransportEntities.Eins
@@ -57,10 +59,10 @@ namespace Eins.TransportEntities.Eins
                 var sp = new EventArgs.StrippedEntities.Player
                 {
                     ConnectionID = player.Value.UserSession.GameConnectionId,
-                    ID = player.Value.ID,
+                    ID = player.Value.UserSession.UserId,
                     OrderID = player.Key,
                     HeldCardAmount = player.Value.HeldCards.Count,
-                    Username = player.Value.Username
+                    Username = player.Value.UserSession.UserName
                 };
                 strippedPlayers.Add(sp);
             }
@@ -73,8 +75,8 @@ namespace Eins.TransportEntities.Eins
                     Players = strippedPlayers,
                     YourCards = item.Value.HeldCards
                 };
-                await hub.Clients.Client(item.Value.UserSession.GameConnectionId)
-                    .SendAsync("Initialized", initArgs);
+                var cl = hub.Clients.Client(item.Value.UserSession.LobbyConnectionId);
+                await cl.SendAsync("Initialized", initArgs);
             }
             return true;
         }
